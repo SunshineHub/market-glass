@@ -446,7 +446,6 @@ header button svg {
 .asset-row:hover {
   background: var(--material-hover);
   box-shadow: 0 7px 18px color-mix(in srgb, var(--text-strong) 5%, transparent), 0 1px 0 var(--material-highlight) inset;
-  transform: translateY(-1px);
 }
 
 .asset-identity {

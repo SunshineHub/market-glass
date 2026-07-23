@@ -15,7 +15,6 @@ withDefaults(
     class="icon-button no-drag"
     :class="[{ active }, size]"
     :aria-label="label"
-    :title="label"
     data-liquid-glass
   >
     <slot />
@@ -33,8 +32,9 @@ withDefaults(
   background: var(--glass-subtle);
   border: 1px solid var(--hairline);
   border-radius: 12px;
+  contain: paint;
   place-items: center;
-  transition: 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .icon-button:hover,
@@ -58,6 +58,8 @@ withDefaults(
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+  position: relative;
+  z-index: 4;
   pointer-events: none;
 }
 

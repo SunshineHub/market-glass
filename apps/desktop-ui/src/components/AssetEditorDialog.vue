@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { lookupFund } from "@/ipc/client";
 import {
   parseFundConfig,
   type FundImportDraft,
 } from "@/features/import/fundConfig";
-import type { AssetSummary, PositionInput } from "@/types/contracts";
+import type { AssetSummary, FundMetadata, PositionInput } from "@/types/contracts";
 
 const props = withDefaults(defineProps<{ saving?: boolean; asset?: AssetSummary }>(), { saving: false });
 const emit = defineEmits<{
@@ -31,8 +32,24 @@ const submitted = ref(false);
 const drafts = ref<FundImportDraft[]>([]);
 const importError = ref("");
 const fileName = ref("");
+const fundMetadata = ref<FundMetadata>();
+const lookupPhase = ref<"idle" | "loading" | "success" | "not-found" | "error">("idle");
+let lookupTimer: number | undefined;
+let lookupSequence = 0;
+let lastAutoName = "";
+let lastAutoStrategy = "";
 
 const isFund = computed(() => form.kind === "fund");
+const metadataBadges = computed(() => {
+  const metadata = fundMetadata.value;
+  if (!metadata) return [];
+  const badges = [metadata.company, metadata.fundType, metadata.indexName];
+  if (metadata.latestNav) {
+    const date = metadata.navDate ? ` · ${metadata.navDate.slice(5)}` : "";
+    badges.push(`净值 ${metadata.latestNav}${date}`);
+  }
+  return badges.filter((item): item is string => Boolean(item));
+});
 const valid = computed(() => {
   if (!form.name.trim()) return false;
   if (!optionalNonNegative(form.totalCost)) return false;
@@ -119,6 +136,71 @@ async function readConfig(event: Event) {
 function removeDraft(key: string) {
   drafts.value = drafts.value.filter((draft) => draft.key !== key);
 }
+
+function resetLookup() {
+  lookupSequence += 1;
+  fundMetadata.value = undefined;
+  lookupPhase.value = "idle";
+  if (lookupTimer !== undefined) window.clearTimeout(lookupTimer);
+  lookupTimer = undefined;
+}
+
+async function performFundLookup(code: string, sequence: number) {
+  lookupPhase.value = "loading";
+  try {
+    const metadata = await lookupFund(code);
+    if (sequence !== lookupSequence || form.code !== code || !isFund.value) return;
+    if (!metadata) {
+      fundMetadata.value = undefined;
+      lookupPhase.value = "not-found";
+      return;
+    }
+    fundMetadata.value = metadata;
+    lookupPhase.value = "success";
+
+    if (!form.name.trim() || form.name === lastAutoName) {
+      form.name = metadata.name;
+    }
+    lastAutoName = metadata.name;
+
+    const strategy = metadata.industry || metadata.indexName || metadata.fundType || "";
+    if (strategy && (!form.strategy.trim() || form.strategy === lastAutoStrategy)) {
+      form.strategy = strategy;
+    }
+    lastAutoStrategy = strategy;
+  } catch {
+    if (sequence !== lookupSequence || form.code !== code || !isFund.value) return;
+    fundMetadata.value = undefined;
+    lookupPhase.value = "error";
+  }
+}
+
+watch(
+  [() => form.code, () => form.kind],
+  ([rawCode, kind]) => {
+    if (lastAutoName && form.name === lastAutoName) form.name = "";
+    if (lastAutoStrategy && form.strategy === lastAutoStrategy) form.strategy = "";
+    if (kind !== "fund") {
+      resetLookup();
+      return;
+    }
+    const code = rawCode.replace(/\D/g, "").slice(0, 6);
+    if (code !== rawCode) {
+      form.code = code;
+      return;
+    }
+    resetLookup();
+    if (!/^\d{6}$/.test(code)) return;
+    const sequence = lookupSequence;
+    lookupTimer = window.setTimeout(() => {
+      lookupTimer = undefined;
+      void performFundLookup(code, sequence);
+    }, 360);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(resetLookup);
 </script>
 
 <template>
@@ -151,8 +233,24 @@ function removeDraft(key: string) {
         </div>
 
         <div v-if="isFund" class="field-row">
-          <label><span>基金代码</span><input v-model.trim="form.code" :disabled="editing" maxlength="6" inputmode="numeric" placeholder="例如 005827" /></label>
+          <label class="fund-code-field">
+            <span>基金代码</span>
+            <div class="code-input">
+              <input v-model.trim="form.code" :disabled="editing" maxlength="6" inputmode="numeric" placeholder="例如 005827" />
+              <i v-if="lookupPhase === 'loading'" class="lookup-spinner" aria-label="正在查询基金资料" />
+              <svg v-else-if="lookupPhase === 'success'" class="lookup-success" viewBox="0 0 24 24" aria-label="基金资料已查询"><path d="m6 12 4 4 8-9" /></svg>
+            </div>
+          </label>
           <label><span>持有份额（可选）</span><input v-model.trim="form.units" inputmode="decimal" placeholder="默认 0，仅观察行情" /></label>
+        </div>
+        <div v-if="isFund && lookupPhase !== 'idle' && lookupPhase !== 'loading'" class="lookup-result" :class="{ warning: lookupPhase !== 'success' }" aria-live="polite">
+          <template v-if="lookupPhase === 'success'">
+            <span class="lookup-source">{{ fundMetadata?.provider }}</span>
+            <span v-for="badge in metadataBadges" :key="badge">{{ badge }}</span>
+            <small>已回填名称{{ fundMetadata?.industry ? '与行业标签' : '' }}</small>
+          </template>
+          <template v-else-if="lookupPhase === 'not-found'">没有查到这个基金，请核对代码；也可以继续手动填写。</template>
+          <template v-else>基金资料暂时查询失败，不影响手动录入和保存。</template>
         </div>
         <label><span>资产名称</span><input v-model.trim="form.name" :placeholder="isFund ? '基金简称' : '例如：现金管理'" /></label>
         <div class="field-row">
@@ -243,6 +341,18 @@ button svg, .drop-copy > svg { width: 18px; height: 18px; fill: none; stroke: cu
 label > span { margin-bottom: 6px; font-size: var(--font-xs); color: var(--text-muted); }
 input { min-width: 0; padding: 9px 10px; font: inherit; font-size: var(--font-sm); color: var(--text-strong); outline: none; background: color-mix(in srgb, var(--glass-subtle) 86%, transparent); border: 1px solid var(--hairline); border-radius: 9px; user-select: text; }
 input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.code-input { position: relative; }
+.code-input input { width: 100%; padding-right: 34px; }
+.code-input svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lookup-spinner, .lookup-success { position: absolute; top: 50%; right: 11px; pointer-events: none; transform: translateY(-50%); }
+.lookup-spinner { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: lookup-spin 720ms linear infinite; }
+.lookup-success { color: var(--loss); }
+.lookup-result { display: flex; gap: 7px; align-items: center; min-height: 24px; padding: 4px 8px; margin-top: -5px; overflow: hidden; font-size: 9px; color: var(--text-muted); background: color-mix(in srgb, var(--glass-subtle) 72%, transparent); border: 1px solid var(--hairline); border-radius: 8px; }
+.lookup-result > span { flex: none; padding-right: 7px; border-right: 1px solid var(--hairline); }
+.lookup-result .lookup-source { color: var(--loss); }
+.lookup-result small { margin-left: auto; color: var(--text-muted); white-space: nowrap; }
+.lookup-result.warning { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 20%, var(--hairline)); }
+@keyframes lookup-spin { to { transform: translateY(-50%) rotate(360deg); } }
 .import-workspace { min-height: 0; overflow: auto; }
 .drop-zone { align-items: center; justify-content: space-between; min-height: 110px; padding: 20px; background: var(--glass-subtle); border: 1px dashed var(--hairline-strong); border-radius: 18px; }
 .drop-zone.compact { min-height: 82px; padding: 14px 16px; }

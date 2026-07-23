@@ -20,6 +20,18 @@ export interface IndexOption {
   region: string;
 }
 
+export interface FundMetadata {
+  code: string;
+  name: string;
+  fundType?: string;
+  company?: string;
+  industry?: string;
+  indexName?: string;
+  latestNav?: string;
+  navDate?: string;
+  provider: string;
+}
+
 export interface AssetSummary {
   id: string;
   kind: AssetKind;
@@ -31,6 +43,7 @@ export interface AssetSummary {
   provider: string;
   dataNature: DataNature;
   freshness: Freshness;
+  currentNav?: number | null;
   currentValue: number;
   dayProfit: number;
   dayProfitPercent: number;

@@ -257,8 +257,8 @@ onBeforeUnmount(() => store.dispose());
       <AppSidebar :active="active" @select="active = $event" />
 
       <main>
-        <header class="topbar drag-region" data-tauri-drag-region>
-          <div>
+        <header class="topbar">
+          <div class="topbar-title drag-region" data-tauri-drag-region>
             <h1>{{ pageTitle[0] }}</h1>
             <p>{{ pageTitle[1] }}</p>
           </div>
@@ -559,6 +559,15 @@ main {
   padding: 14px 20px 10px 24px;
   background: linear-gradient(96deg, color-mix(in srgb, var(--content-surface) 72%, transparent), color-mix(in srgb, var(--bg-b) 18%, transparent));
   border-bottom: 1px solid var(--hairline);
+}
+
+.topbar-title {
+  display: flex;
+  align-self: stretch;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 h1 {

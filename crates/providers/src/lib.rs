@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr, time::Duration};
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use futures::future::join_all;
-use market_glass_application::{IndexMarketQuote, MarketDataProvider, ProviderError};
+use market_glass_application::{FundMetadata, IndexMarketQuote, MarketDataProvider, ProviderError};
 use market_glass_domain::{DataNature, Freshness, FundQuote};
 use reqwest::{Client, header};
 use rust_decimal::Decimal;
@@ -85,6 +85,19 @@ impl HybridMarketDataProvider {
                 })
             })
             .collect())
+    }
+
+    async fn fund_metadata(&self, code: &str) -> Result<Option<FundMetadata>, ProviderError> {
+        let url = format!(
+            "https://fundmobapi.eastmoney.com/FundMNewApi/FundMNNBasicInformation?version=6.2.4&plat=Android&appType=ttjj&FCODE={code}&onFundCache=3&keeeeeyparam=FCODE&deviceid=market-glass&igggggnoreburst=true&product=EFund&MobileKey=market-glass"
+        );
+        let payload = self.get_json(&url).await?;
+        let value = match payload.get("Datas") {
+            Some(Value::Object(_)) => payload.get("Datas"),
+            Some(Value::Array(values)) => values.first(),
+            _ => None,
+        };
+        Ok(value.and_then(parse_fund_metadata))
     }
 
     async fn sina_estimate(&self, code: &str) -> Option<SinaEstimate> {
@@ -427,6 +440,10 @@ impl MarketDataProvider for HybridMarketDataProvider {
             })
             .collect())
     }
+
+    async fn lookup_fund(&self, code: &str) -> Result<Option<FundMetadata>, ProviderError> {
+        self.fund_metadata(code).await
+    }
 }
 
 fn estimate_is_current(estimate: &SinaEstimate, official: &OfficialFund) -> bool {
@@ -498,6 +515,28 @@ fn decimal_field(value: &Value, key: &str) -> Option<Decimal> {
         .and_then(|value| Decimal::from_str(&value).ok())
 }
 
+fn meaningful_string_field(value: &Value, key: &str) -> Option<String> {
+    string_field(value, key).filter(|value| {
+        let value = value.trim();
+        !value.is_empty() && value != "--"
+    })
+}
+
+fn parse_fund_metadata(value: &Value) -> Option<FundMetadata> {
+    Some(FundMetadata {
+        code: meaningful_string_field(value, "FCODE")?,
+        name: meaningful_string_field(value, "SHORTNAME")?,
+        fund_type: meaningful_string_field(value, "FTYPE"),
+        company: meaningful_string_field(value, "JJGS"),
+        industry: meaningful_string_field(value, "TTYPENAME")
+            .or_else(|| meaningful_string_field(value, "FBKINDEXNAME")),
+        index_name: meaningful_string_field(value, "INDEXNAME"),
+        latest_nav: meaningful_string_field(value, "DWJZ"),
+        nav_date: meaningful_string_field(value, "FSRQ"),
+        provider: "东方财富基金资料".into(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -529,11 +568,33 @@ mod tests {
         assert!(!estimate_is_current(&estimate, &official));
     }
 
+    #[test]
+    fn parses_fund_metadata_and_prefers_standard_industry() {
+        let value = serde_json::json!({
+            "FCODE": "161725",
+            "SHORTNAME": "招商中证白酒指数(LOF)A",
+            "FTYPE": "指数型-股票",
+            "JJGS": "招商基金",
+            "TTYPENAME": "食品饮料",
+            "FBKINDEXNAME": "白酒",
+            "INDEXNAME": "中证白酒指数",
+            "DWJZ": "0.5581",
+            "FSRQ": "2026-07-22"
+        });
+        let metadata = parse_fund_metadata(&value).unwrap();
+        assert_eq!(metadata.code, "161725");
+        assert_eq!(metadata.name, "招商中证白酒指数(LOF)A");
+        assert_eq!(metadata.industry.as_deref(), Some("食品饮料"));
+        assert_eq!(metadata.fund_type.as_deref(), Some("指数型-股票"));
+        assert_eq!(metadata.company.as_deref(), Some("招商基金"));
+    }
+
     #[tokio::test]
     #[ignore = "requires public market data APIs"]
     async fn live_provider_returns_global_indices_and_a_fund_snapshot() {
         let provider = HybridMarketDataProvider::new().unwrap();
         let funds = provider.fetch_funds(&["005827".into()]).await.unwrap();
+        let metadata = provider.lookup_fund("161725").await.unwrap().unwrap();
         let indices = provider
             .fetch_indices(&[
                 "1.000001".into(),
@@ -554,5 +615,7 @@ mod tests {
             funds.first().map(|quote| quote.code.as_str()),
             Some("005827")
         );
+        assert_eq!(metadata.name, "招商中证白酒指数(LOF)A");
+        assert_eq!(metadata.industry.as_deref(), Some("食品饮料"));
     }
 }

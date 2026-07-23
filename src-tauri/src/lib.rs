@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use market_glass_application::{
-    BootstrapPayloadDto, OverviewService, OverviewSnapshotDto, PositionBatchUpdateResultDto,
-    PositionInputDto,
+    BootstrapPayloadDto, FundMetadata, OverviewService, OverviewSnapshotDto,
+    PositionBatchUpdateResultDto, PositionInputDto,
 };
 use market_glass_infrastructure::SqlitePortfolioRepository;
 use market_glass_providers::HybridMarketDataProvider;
@@ -86,6 +86,18 @@ async fn refresh_overview(
         .map_err(|error| error.to_string())?;
     emit_snapshot(&app, &snapshot)?;
     Ok(snapshot)
+}
+
+#[tauri::command]
+async fn lookup_fund(
+    state: State<'_, AppState>,
+    code: String,
+) -> Result<Option<FundMetadata>, String> {
+    state
+        .overview
+        .lookup_fund(code)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -250,7 +262,7 @@ fn open_window(app: &AppHandle, kind: &str) -> Result<(), String> {
 }
 
 fn snapshot_for_mini(mut snapshot: OverviewSnapshotDto) -> OverviewSnapshotDto {
-    snapshot.assets.clear();
+    snapshot.assets.retain(|asset| asset.kind == "fund");
     snapshot.allocation.clear();
     snapshot.asset_trend.clear();
     snapshot
@@ -388,6 +400,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_bootstrap,
             refresh_overview,
+            lookup_fund,
             set_privacy_mode,
             set_selected_indices,
             set_market_indices,

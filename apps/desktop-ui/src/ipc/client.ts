@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { mockBootstrap } from "@/ipc/mock";
 import type {
   BootstrapPayload,
+  FundMetadata,
   OverviewSnapshot,
   PositionBatchUpdateResult,
   PositionInput,
@@ -24,6 +25,37 @@ export async function refreshOverview(): Promise<OverviewSnapshot> {
     return snapshot;
   }
   return invoke<OverviewSnapshot>("refresh_overview");
+}
+
+export async function lookupFund(code: string): Promise<FundMetadata | null> {
+  if (!isTauri()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 280));
+    const asset = mockBootstrap.overview.assets.find((item) => item.code === code);
+    if (asset) {
+      return {
+        code,
+        name: asset.name,
+        industry: asset.strategy,
+        fundType: "公募基金",
+        provider: "本地预览数据",
+      };
+    }
+    if (code === "161725") {
+      return {
+        code,
+        name: "招商中证白酒指数(LOF)A",
+        fundType: "指数型-股票",
+        company: "招商基金",
+        industry: "食品饮料",
+        indexName: "中证白酒指数",
+        latestNav: "0.5581",
+        navDate: "2026-07-22",
+        provider: "本地预览数据",
+      };
+    }
+    return null;
+  }
+  return invoke<FundMetadata | null>("lookup_fund", { code });
 }
 
 export async function setPrivacyMode(enabled: boolean): Promise<void> {

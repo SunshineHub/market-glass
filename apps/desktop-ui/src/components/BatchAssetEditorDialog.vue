@@ -249,7 +249,7 @@ button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke
   border-radius: 13px;
   transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
-.edit-row:hover { background: var(--material-hover); transform: translateY(-1px); }
+.edit-row:hover { background: var(--material-hover); }
 .edit-row.invalid { padding-bottom: 28px; border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
 .identity,
 .edit-row label { flex-direction: column; min-width: 0; }

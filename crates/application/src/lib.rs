@@ -28,6 +28,8 @@ pub enum ProviderError {
 pub enum ApplicationError {
     #[error(transparent)]
     Repository(#[from] RepositoryError),
+    #[error(transparent)]
+    Provider(#[from] ProviderError),
     #[error("invalid input: {0}")]
     InvalidInput(String),
 }
@@ -40,6 +42,20 @@ pub struct IndexMarketQuote {
     pub change: f64,
     pub change_percent: f64,
     pub source_time: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FundMetadata {
+    pub code: String,
+    pub name: String,
+    pub fund_type: Option<String>,
+    pub company: Option<String>,
+    pub industry: Option<String>,
+    pub index_name: Option<String>,
+    pub latest_nav: Option<String>,
+    pub nav_date: Option<String>,
+    pub provider: String,
 }
 
 #[async_trait]
@@ -62,6 +78,7 @@ pub trait MarketDataProvider: Send + Sync {
     async fn fetch_indices(&self, codes: &[String])
     -> Result<Vec<IndexMarketQuote>, ProviderError>;
     async fn fetch_funds(&self, codes: &[String]) -> Result<Vec<FundQuote>, ProviderError>;
+    async fn lookup_fund(&self, code: &str) -> Result<Option<FundMetadata>, ProviderError>;
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -90,6 +107,7 @@ pub struct AssetSummaryDto {
     pub provider: String,
     pub data_nature: &'static str,
     pub freshness: &'static str,
+    pub current_nav: Option<f64>,
     pub current_value: f64,
     pub day_profit: f64,
     pub day_profit_percent: f64,
@@ -239,6 +257,19 @@ impl OverviewService {
         })
     }
 
+    pub async fn lookup_fund(
+        &self,
+        code: String,
+    ) -> Result<Option<FundMetadata>, ApplicationError> {
+        let code = code.trim();
+        if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
+            return Err(ApplicationError::InvalidInput(
+                "fund code must contain six digits".into(),
+            ));
+        }
+        self.market.lookup_fund(code).await.map_err(Into::into)
+    }
+
     pub async fn overview(&self) -> Result<(OverviewSnapshotDto, bool), ApplicationError> {
         // Advisory platforms do not expose a stable, authorized constituent feed.
         // Keep legacy rows in local storage for compatibility, but do not present
@@ -330,6 +361,11 @@ impl OverviewService {
                 provider: item.provider.clone(),
                 data_nature: data_nature(item.nature),
                 freshness: freshness(item.freshness),
+                current_nav: item
+                    .code
+                    .as_deref()
+                    .and_then(|code| quote_map.get(code).copied())
+                    .map(|quote| decimal_to_f64(quote.current_nav)),
                 current_value: decimal_to_f64(item.current_value),
                 day_profit: decimal_to_f64(item.day_profit),
                 day_profit_percent: decimal_to_f64(item.day_profit_percent),
@@ -1016,6 +1052,10 @@ mod tests {
 
         async fn fetch_funds(&self, _: &[String]) -> Result<Vec<FundQuote>, ProviderError> {
             Ok(Vec::new())
+        }
+
+        async fn lookup_fund(&self, _: &str) -> Result<Option<FundMetadata>, ProviderError> {
+            Ok(None)
         }
     }
 

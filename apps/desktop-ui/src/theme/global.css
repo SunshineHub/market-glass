@@ -25,6 +25,7 @@ html {
 
 body {
   color: var(--text);
+  cursor: default;
   background: transparent;
   user-select: none;
   -webkit-font-smoothing: antialiased;
@@ -169,7 +170,7 @@ select:focus-visible {
   position: absolute;
   top: -35%;
   left: -72%;
-  z-index: 3;
+  z-index: 1;
   width: 46%;
   height: 170%;
   content: "";
@@ -183,7 +184,7 @@ select:focus-visible {
 
 :is(button, [data-liquid-glass])::after {
   position: absolute;
-  z-index: 3;
+  z-index: 1;
   content: "";
   pointer-events: none;
   background:
@@ -193,6 +194,13 @@ select:focus-visible {
   opacity: 0;
   transition: opacity 180ms ease;
   inset: 0;
+}
+
+button > svg,
+button > span,
+button > i {
+  position: relative;
+  z-index: 2;
 }
 
 :is(button, [data-liquid-glass]):not(:disabled):hover::before {
