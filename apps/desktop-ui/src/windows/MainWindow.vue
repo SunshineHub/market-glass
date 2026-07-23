@@ -18,6 +18,12 @@ import {
   startDraggingCurrentWindow,
 } from "@/ipc/client";
 import { createFundExport } from "@/features/export/fundConfig";
+import {
+  fontSizeOptions,
+  readFontSize,
+  setFontSize as persistFontSize,
+  type FontSizePreference,
+} from "@/features/preferences/fontSize";
 import { usePortfolioStore } from "@/stores/portfolio";
 import type { AssetSummary, PositionInput, PositionUpdateFailure } from "@/types/contracts";
 
@@ -37,6 +43,9 @@ const marketEditorOpen = ref(false);
 const marketEditorSaving = ref(false);
 const assetDeleting = ref(false);
 const assetExportState = ref<"idle" | "saving" | "done" | "error">("idle");
+const fontSize = ref<FontSizePreference>(readFontSize());
+const fontMenuOpen = ref(false);
+const fontControl = ref<HTMLElement>();
 const titleMap: Record<string, [string, string]> = {
   overview: ["资产总览", "基金与全球市场的一站式观察"],
   analysis: ["资产分析", "行业分布与持仓数据覆盖"],
@@ -128,6 +137,19 @@ function handleWindowPointerDown(event: PointerEvent) {
   if (!target.closest("[data-window-drag]")) return;
   if (target.closest(".no-drag, button, a, input, select, textarea, [role='button']")) return;
   void startDraggingCurrentWindow();
+}
+
+function selectFontSize(value: FontSizePreference) {
+  fontSize.value = value;
+  persistFontSize(value);
+  fontMenuOpen.value = false;
+}
+
+function handleDocumentPointerDown(event: PointerEvent) {
+  if (!fontMenuOpen.value) return;
+  const target = event.target;
+  if (target instanceof Node && fontControl.value?.contains(target)) return;
+  fontMenuOpen.value = false;
 }
 
 function openEditor(asset?: AssetSummary) {
@@ -247,8 +269,14 @@ const exportButtonLabel = computed(() => {
   return "导出配置";
 });
 
-onMounted(() => store.initialize());
-onBeforeUnmount(() => store.dispose());
+onMounted(() => {
+  store.initialize();
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  store.dispose();
+});
 </script>
 
 <template>
@@ -266,6 +294,29 @@ onBeforeUnmount(() => store.dispose());
             <span class="sync-state" :class="store.payload.sync.phase">
               <i />{{ store.payload.sync.message }} · {{ statusTime }}
             </span>
+            <div ref="fontControl" class="font-control no-drag">
+              <IconButton label="调整字体大小" :active="fontMenuOpen" @click="fontMenuOpen = !fontMenuOpen">
+                <span class="font-size-icon">Aa</span>
+              </IconButton>
+              <Transition name="font-menu">
+                <div v-if="fontMenuOpen" class="font-popover" role="menu" aria-label="字体大小">
+                  <span class="font-popover-title">字体大小</span>
+                  <button
+                    v-for="option in fontSizeOptions"
+                    :key="option.value"
+                    type="button"
+                    role="menuitemradio"
+                    :aria-checked="fontSize === option.value"
+                    :class="{ active: fontSize === option.value }"
+                    @click="selectFontSize(option.value)"
+                  >
+                    <i>{{ option.label === "小" ? "A" : option.label === "标准" ? "Aa" : "大" }}</i>
+                    <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+                    <svg v-if="fontSize === option.value" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9" /></svg>
+                  </button>
+                </div>
+              </Transition>
+            </div>
             <IconButton label="立即刷新" :active="store.refreshing" @click="store.refresh">
               <svg viewBox="0 0 24 24" :class="{ spinning: store.refreshing }"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
             </IconButton>
@@ -552,6 +603,8 @@ main {
 }
 
 .topbar {
+  position: relative;
+  z-index: 20;
   display: flex;
   flex: 0 0 80px;
   align-items: center;
@@ -588,6 +641,128 @@ h1 {
   display: flex;
   gap: 7px;
   align-items: center;
+}
+
+.font-control {
+  position: relative;
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.font-size-icon {
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -.05em;
+}
+
+.font-popover {
+  position: absolute;
+  top: 43px;
+  right: 0;
+  z-index: 80;
+  width: 188px;
+  padding: 8px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--material-highlight) 24%, transparent), transparent 42%),
+    color-mix(in srgb, var(--material-elevated) 94%, transparent);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 15px;
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--text-strong) 16%, transparent), 0 1px 0 var(--material-highlight) inset;
+  backdrop-filter: blur(28px) saturate(155%);
+  -webkit-backdrop-filter: blur(28px) saturate(155%);
+}
+
+.font-popover-title {
+  display: block;
+  padding: 3px 7px 7px;
+  font-size: var(--font-xs);
+  font-weight: 680;
+  color: var(--text-muted);
+}
+
+.font-popover button {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 15px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 7px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.font-popover button:hover {
+  color: var(--text-strong);
+  background: var(--glass-hover);
+}
+
+.font-popover button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.font-popover button > i {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 760;
+  color: var(--text-strong);
+  background: var(--glass-subtle);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  place-items: center;
+}
+
+.font-popover button:nth-of-type(3) > i {
+  font-size: 13px;
+}
+
+.font-popover button > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.font-popover strong {
+  font-size: var(--font-sm);
+  color: currentColor;
+}
+
+.font-popover small {
+  margin-top: 2px;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.font-popover svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.font-menu-enter-active,
+.font-menu-leave-active {
+  transition: opacity 150ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
+  transform-origin: top right;
+}
+
+.font-menu-enter-from,
+.font-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(.98);
 }
 
 .window-controls {

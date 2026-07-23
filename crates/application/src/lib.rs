@@ -179,6 +179,8 @@ pub struct PositionInputDto {
     pub name: String,
     pub units: Option<String>,
     #[serde(default)]
+    pub unit_cost: Option<String>,
+    #[serde(default)]
     pub total_cost: String,
     pub manual_value: Option<String>,
     pub manual_day_percent: Option<String>,
@@ -677,6 +679,20 @@ fn parse_position(input: PositionInputDto) -> Result<Position, ApplicationError>
         ));
     }
 
+    let units = parse_non_negative_or_zero(input.units.as_deref(), "units")?;
+    let total_cost = match input
+        .unit_cost
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => {
+            let unit_cost = parse_non_negative_or_zero(Some(value), "unitCost")?;
+            (units * unit_cost).round_dp(2)
+        }
+        None => parse_non_negative_or_zero(Some(&input.total_cost), "totalCost")?,
+    };
+
     Ok(Position {
         id: input
             .id
@@ -691,8 +707,8 @@ fn parse_position(input: PositionInputDto) -> Result<Position, ApplicationError>
             .map(|value| value.trim().to_owned())
             .filter(|value| !value.is_empty()),
         name: input.name.trim().to_owned(),
-        units: parse_non_negative_or_zero(input.units.as_deref(), "units")?,
-        total_cost: parse_non_negative_or_zero(Some(&input.total_cost), "totalCost")?,
+        units,
+        total_cost,
         manual_value: parse_optional_non_negative_decimal(
             input.manual_value.as_deref(),
             "manualValue",
@@ -1066,12 +1082,34 @@ mod tests {
             code: Some("005827".into()),
             name: name.into(),
             units: Some("100".into()),
+            unit_cost: None,
             total_cost: "200".into(),
             manual_value: None,
             manual_day_percent: None,
             provider: Some("test".into()),
             strategy: Some("科技".into()),
         }
+    }
+
+    #[test]
+    fn derives_each_lot_total_cost_from_units_and_unit_cost() {
+        let mut first_input = fund_input(Uuid::new_v4(), "分批成本基金");
+        first_input.units = Some("100.25".into());
+        first_input.unit_cost = Some("1.2345".into());
+        first_input.total_cost = "999999".into();
+        let first_lot = parse_position(first_input).unwrap();
+
+        let mut second_input = fund_input(Uuid::new_v4(), "分批成本基金");
+        second_input.units = Some("50".into());
+        second_input.unit_cost = Some("1.5".into());
+        let second_lot = parse_position(second_input).unwrap();
+
+        assert_eq!(first_lot.units, Decimal::new(10025, 2));
+        assert_eq!(first_lot.total_cost, Decimal::new(12376, 2));
+        assert_eq!(
+            first_lot.total_cost + second_lot.total_cost,
+            Decimal::new(19876, 2)
+        );
     }
 
     #[tokio::test]

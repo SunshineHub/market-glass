@@ -43,9 +43,12 @@ const confirmAction = ref<"selected" | "all">();
 const displayedAssets = computed(() => {
   if (sortMode.value === "default") return props.assets;
   const direction = sortMode.value === "day-desc" ? -1 : 1;
-  return [...props.assets].sort(
-    (left, right) => (left.dayProfitPercent - right.dayProfitPercent) * direction,
-  );
+  return [...props.assets].sort((left, right) => {
+    const percentOrder = (left.dayProfitPercent - right.dayProfitPercent) * direction;
+    if (percentOrder !== 0) return percentOrder;
+    const amountOrder = (left.dayProfit - right.dayProfit) * direction;
+    return amountOrder || left.name.localeCompare(right.name, "zh-CN");
+  });
 });
 const allSelected = computed(
   () => props.assets.length > 0 && props.assets.every((asset) => selectedIds.value.includes(asset.id)),
@@ -162,7 +165,8 @@ function sourceLabel(provider: string) {
         type="button"
         class="column-sort column-number"
         :class="{ ascending: sortMode === 'day-asc', active: sortMode !== 'default' }"
-        :aria-label="sortMode === 'default' ? '按当日涨跌幅从高到低排序' : sortMode === 'day-asc' ? '当前从低到高，点击切换为从高到低' : '当前从高到低，点击切换为从低到高'"
+        :aria-label="sortMode === 'default' ? '按当日盈亏百分比从高到低排序' : sortMode === 'day-asc' ? '当日盈亏百分比当前从低到高，点击切换为从高到低' : '当日盈亏百分比当前从高到低，点击切换为从低到高'"
+        title="排序依据：当日盈亏百分比"
         @click="cycleSort"
       >
         <span>当日盈亏</span><i />
@@ -508,7 +512,7 @@ header button svg {
 
 .asset-identity strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 670;
   color: var(--text-strong);
   text-overflow: ellipsis;

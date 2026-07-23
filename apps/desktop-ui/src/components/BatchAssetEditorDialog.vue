@@ -227,7 +227,7 @@ button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke
 .edit-columns {
   padding: 9px 12px 7px;
   margin-top: 12px;
-  font-size: 10px;
+  font-size: var(--font-xs);
   font-weight: 620;
   color: var(--text-muted);
 }
@@ -254,7 +254,7 @@ button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke
 .identity,
 .edit-row label { flex-direction: column; min-width: 0; }
 .identity small,
-.edit-row label span { margin: 0 0 5px; font-size: 9px; color: var(--text-muted); }
+.edit-row label span { margin: 0 0 5px; font-size: var(--font-xs); color: var(--text-muted); }
 .identity small { order: -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 input {
   min-width: 0;
@@ -270,12 +270,12 @@ input {
   user-select: text;
 }
 input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.row-error { position: absolute; bottom: 7px; left: 12px; margin: 0; font-size: 9px; color: var(--warning); }
+.row-error { position: absolute; bottom: 7px; left: 12px; margin: 0; font-size: var(--font-xs); color: var(--warning); }
 
 footer { gap: 8px; align-items: center; justify-content: flex-end; padding-top: 15px; margin-top: 10px; border-top: 1px solid var(--hairline); }
-footer button { padding: 9px 14px; font-size: 11px; border-radius: 10px; }
+footer button { padding: 9px 14px; font-size: var(--font-sm); border-radius: 10px; }
 footer .primary { min-width: 112px; color: white; background: var(--accent); border-color: transparent; }
-.local-note { gap: 7px; align-items: center; margin-right: auto; font-size: 9px; color: var(--text-muted); }
+.local-note { gap: 7px; align-items: center; margin-right: auto; font-size: var(--font-xs); color: var(--text-muted); }
 .local-note i { color: var(--loss); }
 
 @media (max-width: 760px) {

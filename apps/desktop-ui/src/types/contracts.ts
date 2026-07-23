@@ -96,6 +96,7 @@ export interface PositionInput {
   code?: string;
   name: string;
   units?: string;
+  unitCost?: string;
   totalCost: string;
   manualValue?: string;
   manualDayPercent?: string;

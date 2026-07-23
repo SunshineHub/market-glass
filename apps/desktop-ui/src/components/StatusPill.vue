@@ -32,7 +32,7 @@ const label = computed(() => `${natureLabel[props.nature]}${freshnessLabel[props
   align-items: center;
   width: fit-content;
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 650;
   color: var(--text-muted);
   white-space: nowrap;

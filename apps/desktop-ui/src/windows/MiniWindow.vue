@@ -17,9 +17,12 @@ const fundAssets = computed(() => {
   const assets = store.overview.assets.filter((asset) => asset.kind === "fund");
   if (sortMode.value === "default") return assets;
   const direction = sortMode.value === "day-desc" ? -1 : 1;
-  return assets
-    .slice()
-    .sort((left, right) => (left.dayProfitPercent - right.dayProfitPercent) * direction);
+  return assets.slice().sort((left, right) => {
+    const percentOrder = (left.dayProfitPercent - right.dayProfitPercent) * direction;
+    if (percentOrder !== 0) return percentOrder;
+    const amountOrder = (left.dayProfit - right.dayProfit) * direction;
+    return amountOrder || left.name.localeCompare(right.name, "zh-CN");
+  });
 });
 const updatedTime = computed(() => timeLabel(store.overview.calculatedAt));
 
@@ -120,7 +123,8 @@ onBeforeUnmount(() => store.dispose());
             type="button"
             class="fund-sort"
             :class="{ ascending: sortMode === 'day-asc', active: sortMode !== 'default' }"
-            :aria-label="sortMode === 'default' ? '按当日盈亏从高到低排序' : sortMode === 'day-asc' ? '当前从低到高，点击切换为从高到低' : '当前从高到低，点击切换为从低到高'"
+            :aria-label="sortMode === 'default' ? '按当日盈亏百分比从高到低排序' : sortMode === 'day-asc' ? '当日盈亏百分比当前从低到高，点击切换为从高到低' : '当日盈亏百分比当前从高到低，点击切换为从低到高'"
+            title="排序依据：当日盈亏百分比"
             @click="cycleSort"
           >
             <span>当日盈亏</span><i />
@@ -256,7 +260,7 @@ header {
 
 .mini-brand strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--mini-font-md);
   color: var(--text-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -264,7 +268,7 @@ header {
 
 .mini-brand small {
   overflow: hidden;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   color: var(--text-muted);
   letter-spacing: .04em;
   text-overflow: ellipsis;
@@ -335,7 +339,7 @@ header {
 
 .mini-markets span {
   overflow: hidden;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -343,13 +347,13 @@ header {
 
 .mini-markets strong {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--mini-font-md);
   color: var(--text-strong);
 }
 
 .mini-markets small {
   margin-top: 2px;
-  font-size: 9px;
+  font-size: var(--mini-font-sm);
   font-weight: 690;
 }
 
@@ -359,7 +363,7 @@ header {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--material-content) 80%, transparent);
+  background: color-mix(in srgb, var(--material-content) 72%, transparent);
   border: 1px solid color-mix(in srgb, var(--hairline-strong) 68%, transparent);
   border-radius: 15px;
   box-shadow: 0 10px 26px color-mix(in srgb, var(--text-strong) 4%, transparent), 0 1px 0 var(--material-highlight) inset;
@@ -376,16 +380,20 @@ header {
 .fund-head {
   flex: 0 0 32px;
   padding: 0 10px;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   font-weight: 640;
   color: var(--text-muted);
   letter-spacing: .01em;
-  background: color-mix(in srgb, var(--glass-subtle) 68%, transparent);
-  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--glass-subtle) 48%, transparent);
+}
+
+.fund-head > *,
+.fund-row > * {
+  min-width: 0;
 }
 
 .fund-head > :not(:first-child) {
-  justify-self: end;
+  justify-self: stretch;
   text-align: right;
 }
 
@@ -393,6 +401,7 @@ header {
   display: inline-flex;
   gap: 5px;
   align-items: center;
+  width: 100%;
   color: var(--text);
 }
 
@@ -401,7 +410,7 @@ header {
   min-width: 15px;
   height: 15px;
   padding: 0 4px;
-  font-size: 7px;
+  font-size: var(--mini-font-micro);
   font-weight: 700;
   color: var(--accent);
   background: var(--accent-soft);
@@ -411,8 +420,10 @@ header {
 
 .fund-sort {
   display: inline-flex;
+  width: 100%;
   gap: 4px;
   align-items: center;
+  justify-content: flex-end;
   justify-self: end;
   padding: 0;
   overflow: visible;
@@ -454,7 +465,11 @@ header {
 }
 
 .fund-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-height: 0;
+  padding: 3px 4px 6px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-color: color-mix(in srgb, var(--text-muted) 22%, transparent) transparent;
@@ -462,23 +477,21 @@ header {
 }
 
 .fund-row {
-  min-height: 49px;
-  padding: 6px 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--hairline) 68%, transparent);
-  transition: background-color 150ms ease;
+  min-height: var(--mini-row-height);
+  padding: 6px;
+  border-radius: 10px;
+  transition: background-color 150ms ease, box-shadow 170ms ease;
 }
 
 .fund-row:hover {
   background: color-mix(in srgb, var(--material-hover) 72%, transparent);
-}
-
-.fund-row:last-child {
-  border-bottom: 0;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--text-strong) 4%, transparent), 0 1px 0 var(--material-highlight) inset;
 }
 
 .fund-row > :not(:first-child) {
+  justify-self: stretch;
   overflow: hidden;
-  font-size: 9px;
+  font-size: var(--mini-font-sm);
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -496,7 +509,7 @@ header {
 
 .fund-identity strong {
   overflow: hidden;
-  font-size: 9.5px;
+  font-size: var(--mini-font-sm);
   font-weight: 660;
   color: var(--text-strong);
   text-overflow: ellipsis;
@@ -505,7 +518,7 @@ header {
 
 .fund-identity small {
   margin-top: 3px;
-  font-size: 7.5px;
+  font-size: var(--mini-font-micro);
   color: var(--text-muted);
   letter-spacing: .04em;
 }
@@ -521,14 +534,14 @@ header {
 .fund-metric strong {
   overflow: hidden;
   max-width: 100%;
-  font-size: 8.5px;
+  font-size: var(--mini-font-xs);
   font-weight: 710;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fund-metric small {
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   font-weight: 680;
 }
 
@@ -537,7 +550,7 @@ header {
 }
 
 .fund-metric.unknown small {
-  font-size: 7px;
+  font-size: var(--mini-font-micro);
   font-weight: 500;
 }
 
@@ -550,13 +563,13 @@ header {
 }
 
 .fund-empty strong {
-  font-size: 11px;
+  font-size: var(--mini-font-md);
   color: var(--text-strong);
 }
 
 .fund-empty span {
   margin-top: 5px;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
 }
 
 .mini-totals {
@@ -583,16 +596,16 @@ header {
 
 .mini-totals span {
   margin-right: auto;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   color: var(--text-muted);
 }
 
 .mini-totals strong {
-  font-size: 10px;
+  font-size: var(--mini-font-md);
 }
 
 .mini-totals small {
-  font-size: 9px;
+  font-size: var(--mini-font-sm);
   font-weight: 710;
 }
 
@@ -600,7 +613,7 @@ footer {
   flex: 0 0 22px;
   gap: 7px;
   padding: 0 3px;
-  font-size: 8px;
+  font-size: var(--mini-font-xs);
   color: var(--text-muted);
 }
 
@@ -625,7 +638,7 @@ footer {
 footer button {
   padding: 4px 8px;
   margin-left: auto;
-  font-size: 9px;
+  font-size: var(--mini-font-sm);
   color: var(--text);
   cursor: pointer;
   background: transparent;

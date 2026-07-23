@@ -77,7 +77,7 @@ withDefaults(defineProps<{ indices: IndexQuote[]; compact?: boolean }>(), { comp
 }
 
 .market-move small {
-  font-size: 9px;
+  font-size: var(--font-xs);
   color: var(--text-muted);
 }
 
@@ -92,7 +92,7 @@ withDefaults(defineProps<{ indices: IndexQuote[]; compact?: boolean }>(), { comp
 }
 
 .compact .market-copy strong {
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .compact .market-move small {

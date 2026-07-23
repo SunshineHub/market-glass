@@ -22,6 +22,7 @@ const form = reactive({
   code: props.asset?.code ?? "",
   name: props.asset?.name ?? "",
   units: props.asset?.units ?? "",
+  unitCost: "",
   totalCost: props.asset?.totalCost ?? "",
   manualValue: props.asset?.kind === "cash" ? String(props.asset.currentValue) : "",
   manualDayPercent: props.asset?.kind === "cash" ? String(props.asset.dayProfitPercent) : "",
@@ -40,6 +41,13 @@ let lastAutoName = "";
 let lastAutoStrategy = "";
 
 const isFund = computed(() => form.kind === "fund");
+const automaticInvestmentCost = computed(() => {
+  if (!isFund.value || editing.value || form.unitCost.trim() === "") return "";
+  const units = Number(normalized(form.units || "0"));
+  const unitCost = Number(normalized(form.unitCost));
+  if (!Number.isFinite(units) || !Number.isFinite(unitCost) || units < 0 || unitCost < 0) return "";
+  return (units * unitCost).toFixed(2);
+});
 const metadataBadges = computed(() => {
   const metadata = fundMetadata.value;
   if (!metadata) return [];
@@ -54,7 +62,9 @@ const valid = computed(() => {
   if (!form.name.trim()) return false;
   if (!optionalNonNegative(form.totalCost)) return false;
   if (isFund.value) {
-    return /^\d{6}$/.test(form.code) && optionalNonNegative(form.units);
+    return /^\d{6}$/.test(form.code)
+      && optionalNonNegative(form.units)
+      && optionalNonNegative(form.unitCost);
   }
   return optionalNonNegative(form.manualValue) && optionalNumber(form.manualDayPercent);
 });
@@ -92,7 +102,10 @@ function submitSingle() {
     code: isFund.value ? form.code : undefined,
     name: form.name,
     units: isFund.value ? normalized(form.units || "0") : undefined,
-    totalCost: normalized(form.totalCost || "0"),
+    unitCost: isFund.value && !editing.value && form.unitCost.trim()
+      ? normalized(form.unitCost)
+      : undefined,
+    totalCost: normalized(automaticInvestmentCost.value || form.totalCost || "0"),
     manualValue: isFund.value ? undefined : normalized(form.manualValue || "0"),
     manualDayPercent: isFund.value ? undefined : normalized(form.manualDayPercent || "0"),
     provider: isFund.value ? "自动估值" : form.provider || "手动录入",
@@ -200,6 +213,10 @@ watch(
   { immediate: true },
 );
 
+watch(automaticInvestmentCost, (value) => {
+  if (value) form.totalCost = value;
+});
+
 onBeforeUnmount(resetLookup);
 </script>
 
@@ -253,17 +270,36 @@ onBeforeUnmount(resetLookup);
           <template v-else>基金资料暂时查询失败，不影响手动录入和保存。</template>
         </div>
         <label><span>资产名称</span><input v-model.trim="form.name" :placeholder="isFund ? '基金简称' : '例如：现金管理'" /></label>
-        <div class="field-row">
+        <div v-if="isFund && !editing" class="field-row cost-row">
+          <label>
+            <span>单位持仓成本（可选）</span>
+            <input v-model.trim="form.unitCost" inputmode="decimal" placeholder="例如 1.2345" />
+          </label>
+          <label>
+            <span>{{ automaticInvestmentCost ? "本次投入成本（自动计算）" : "本次投入成本（可选）" }}</span>
+            <div class="calculated-input" :class="{ calculated: automaticInvestmentCost }">
+              <input
+                v-model.trim="form.totalCost"
+                inputmode="decimal"
+                :readonly="Boolean(automaticInvestmentCost)"
+                placeholder="默认 0，也可直接输入"
+              />
+              <small v-if="automaticInvestmentCost">份额 × 单位成本</small>
+            </div>
+          </label>
+        </div>
+        <div v-else class="field-row">
           <label><span>累计投入 / 成本（可选）</span><input v-model.trim="form.totalCost" inputmode="decimal" placeholder="默认 0" /></label>
           <label v-if="!isFund"><span>当前资产（可选）</span><input v-model.trim="form.manualValue" inputmode="decimal" placeholder="默认 0" /></label>
           <label v-else><span>行业 / 策略标签</span><input v-model.trim="form.strategy" placeholder="例如：科技、医药、红利" /></label>
         </div>
+        <label v-if="isFund && !editing"><span>行业 / 策略标签</span><input v-model.trim="form.strategy" placeholder="例如：科技、医药、红利" /></label>
         <div v-if="!isFund" class="field-row">
           <label><span>当日盈亏百分比</span><input v-model.trim="form.manualDayPercent" inputmode="decimal" placeholder="例如 0.35" /></label>
           <label><span>数据来源</span><input v-model.trim="form.provider" placeholder="例如：手动录入、银行" /></label>
         </div>
-        <p v-if="submitted && !valid" class="form-error">请填写名称并检查基金代码和数字格式；份额、成本可留空。</p>
-        <p v-else class="form-note">{{ editing ? '保存后会覆盖当前持仓的份额、累计成本和行业标签。' : isFund ? '份额和成本可为 0；同代码再次新增时会自动累计，行情仍按三级数据源刷新。' : '现金金额可为 0，并保留为本地观察资产。' }}</p>
+        <p v-if="submitted && !valid" class="form-error">请填写名称并检查基金代码和数字格式；份额、单位成本和投入成本均可留空。</p>
+        <p v-else class="form-note">{{ editing ? '保存后会覆盖当前持仓的份额、累计成本和行业标签。' : isFund ? '填写单位持仓成本后，本次投入按“份额 × 单位成本”计算；同代码再次新增会累计每一笔份额与投入成本。' : '现金金额可为 0，并保留为本地观察资产。' }}</p>
       </form>
 
       <div v-else class="import-workspace">
@@ -330,7 +366,7 @@ button svg, .drop-copy > svg { width: 18px; height: 18px; fill: none; stroke: cu
 .mode-tabs button { position: relative; z-index: 1; display: flex; flex: 1; gap: 7px; align-items: center; justify-content: center; padding: 9px 14px 11px; font-size: var(--font-sm); background: transparent; border-color: transparent; border-radius: 0; transition: color 220ms ease; }
 .mode-tabs button.active { color: var(--accent); background: transparent; border-color: transparent; box-shadow: none; }
 .single-form, form, label { display: flex; flex-direction: column; }
-.single-form { gap: 13px; width: min(620px, 100%); align-self: center; }
+.single-form { flex: 1; gap: 13px; width: min(620px, 100%); min-height: 0; padding: 0 5px 4px; overflow-x: hidden; overflow-y: auto; align-self: center; }
 .single-form.editing { margin-top: 18px; }
 .field-row { gap: 12px; }.field-row label { flex: 1; }
 .kind-tabs { position: relative; padding: 0; overflow: visible; background: transparent; border: 0; border-bottom: 1px solid var(--hairline); border-radius: 0; }
@@ -341,13 +377,18 @@ button svg, .drop-copy > svg { width: 18px; height: 18px; fill: none; stroke: cu
 label > span { margin-bottom: 6px; font-size: var(--font-xs); color: var(--text-muted); }
 input { min-width: 0; padding: 9px 10px; font: inherit; font-size: var(--font-sm); color: var(--text-strong); outline: none; background: color-mix(in srgb, var(--glass-subtle) 86%, transparent); border: 1px solid var(--hairline); border-radius: 9px; user-select: text; }
 input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input[readonly] { color: var(--text); cursor: default; background: color-mix(in srgb, var(--accent-soft) 32%, var(--glass-subtle)); }
+.calculated-input { position: relative; }
+.calculated-input input { width: 100%; }
+.calculated-input.calculated input { padding-right: 104px; }
+.calculated-input small { position: absolute; top: 50%; right: 10px; font-size: var(--font-xs); color: var(--accent); pointer-events: none; transform: translateY(-50%); }
 .code-input { position: relative; }
 .code-input input { width: 100%; padding-right: 34px; }
 .code-input svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .lookup-spinner, .lookup-success { position: absolute; top: 50%; right: 11px; pointer-events: none; transform: translateY(-50%); }
 .lookup-spinner { width: 14px; height: 14px; border: 1.5px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: lookup-spin 720ms linear infinite; }
 .lookup-success { color: var(--loss); }
-.lookup-result { display: flex; gap: 7px; align-items: center; min-height: 24px; padding: 4px 8px; margin-top: -5px; overflow: hidden; font-size: 9px; color: var(--text-muted); background: color-mix(in srgb, var(--glass-subtle) 72%, transparent); border: 1px solid var(--hairline); border-radius: 8px; }
+.lookup-result { display: flex; gap: 7px; align-items: center; min-height: 26px; padding: 4px 8px; margin-top: -5px; overflow: hidden; font-size: var(--font-xs); color: var(--text-muted); background: color-mix(in srgb, var(--glass-subtle) 72%, transparent); border: 1px solid var(--hairline); border-radius: 8px; }
 .lookup-result > span { flex: none; padding-right: 7px; border-right: 1px solid var(--hairline); }
 .lookup-result .lookup-source { color: var(--loss); }
 .lookup-result small { margin-left: auto; color: var(--text-muted); white-space: nowrap; }
@@ -360,14 +401,14 @@ input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); 
 .drop-copy div { display: flex; flex-direction: column; }.drop-copy strong { font-size: var(--font-md); color: var(--text-strong); }.drop-copy span { margin-top: 5px; font-size: var(--font-xs); color: var(--text-muted); }
 .file-button { display: inline-flex; flex-direction: row; padding: 9px 13px; font-size: var(--font-sm); color: white; cursor: pointer; background: var(--accent); border-radius: 10px; }.file-button input { display: none; }
 .form-note, .form-error { min-height: 16px; margin: 0; font-size: var(--font-xs); color: var(--text-muted); }.form-error { color: var(--profit); }.import-error { padding: 10px 12px; margin-top: 10px; background: var(--profit-soft); border-radius: 10px; }
-.preview-section { margin-top: 12px; }.preview-section > header { align-items: center; justify-content: space-between; margin-bottom: 8px; }.preview-section > header div { display: flex; flex-direction: column; }.preview-section > header strong { font-size: 12px; color: var(--text-strong); }.preview-section > header span, .preview-section > header small { margin-top: 3px; font-size: 9px; color: var(--text-muted); }
+.preview-section { margin-top: 12px; }.preview-section > header { align-items: center; justify-content: space-between; margin-bottom: 8px; }.preview-section > header div { display: flex; flex-direction: column; }.preview-section > header strong { font-size: var(--font-sm); color: var(--text-strong); }.preview-section > header span, .preview-section > header small { margin-top: 3px; font-size: var(--font-xs); color: var(--text-muted); }
 .preview-table { overflow: hidden; border: 1px solid var(--hairline); border-radius: 13px; }
 .preview-head, .preview-row { display: grid; grid-template-columns: 32px minmax(210px, 1.6fr) minmax(90px, .65fr) minmax(100px, .72fr) minmax(120px, .8fr) 32px; gap: 8px; align-items: center; }
-.preview-head { padding: 7px 10px; font-size: 9px; color: var(--text-muted); background: var(--glass-subtle); }
+.preview-head { padding: 7px 10px; font-size: var(--font-xs); color: var(--text-muted); background: var(--glass-subtle); }
 .preview-row { padding: 8px 10px; border-top: 1px solid var(--hairline); transition: 150ms ease; }.preview-row.invalid { background: var(--profit-soft); }
-.identity-fields { display: grid; grid-template-columns: 72px 1fr; gap: 6px; }.strategy-field { min-width: 0; }.strategy-field small { display: block; margin-top: 3px; overflow: hidden; font-size: 8px; color: var(--warning); text-overflow: ellipsis; white-space: nowrap; }
+.identity-fields { display: grid; grid-template-columns: 72px 1fr; gap: 6px; }.strategy-field { min-width: 0; }.strategy-field small { display: block; margin-top: 3px; overflow: hidden; font-size: var(--font-xs); color: var(--warning); text-overflow: ellipsis; white-space: nowrap; }
 .check { display: grid; width: 18px; height: 18px; cursor: pointer; place-items: center; }.check input { position: absolute; opacity: 0; }.check i { display: block; width: 15px; height: 15px; border: 1px solid var(--hairline-strong); border-radius: 5px; }.check input:checked + i { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--glass-strong); }
 .remove-row { display: grid; width: 28px; height: 28px; padding: 0; background: transparent; border-color: transparent; border-radius: 8px; place-items: center; }.remove-row:hover { background: var(--glass-subtle); }
-footer { gap: 8px; align-items: center; justify-content: flex-end; padding-top: 16px; margin-top: auto; border-top: 1px solid var(--hairline); }footer button { padding: 9px 14px; font-size: 11px; border-radius: 10px; }footer .primary { min-width: 100px; color: white; background: var(--accent); border-color: transparent; }.privacy-note { display: flex; gap: 7px; align-items: center; margin-right: auto; font-size: 9px; color: var(--text-muted); }.privacy-note i { width: 6px; height: 6px; background: var(--loss); border-radius: 99px; box-shadow: 0 0 0 3px var(--loss-soft); }
+footer { flex: none; gap: 8px; align-items: center; justify-content: flex-end; padding-top: 16px; margin-top: auto; border-top: 1px solid var(--hairline); }footer button { padding: 9px 14px; font-size: var(--font-sm); border-radius: 10px; }footer .primary { min-width: 100px; color: white; background: var(--accent); border-color: transparent; }.privacy-note { display: flex; gap: 7px; align-items: center; margin-right: auto; font-size: var(--font-xs); color: var(--text-muted); }.privacy-note i { width: 6px; height: 6px; background: var(--loss); border-radius: 99px; box-shadow: 0 0 0 3px var(--loss-soft); }
 @media (max-width: 760px) { .preview-head { display: none; }.preview-row { grid-template-columns: 28px 1fr 28px; }.preview-row > input, .strategy-field { grid-column: 2; }.dialog-backdrop { padding: 10px; }.editor { width: 100%; max-height: calc(100vh - 20px); }.mode-tabs button { padding-inline: 9px; }.mode-tabs svg { display: none; } }
 </style>

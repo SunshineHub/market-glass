@@ -56,6 +56,11 @@ button * {
   pointer-events: none;
 }
 
+button::before,
+button::after {
+  pointer-events: none;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {

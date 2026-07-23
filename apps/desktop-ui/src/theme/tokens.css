@@ -7,11 +7,16 @@
   text-rendering: optimizeLegibility;
 
   --font-mono: "SF Mono", "Cascadia Code", "Segoe UI Mono", ui-monospace, monospace;
-  --font-xs: clamp(10px, 0.78vw, 11px);
-  --font-sm: clamp(11px, 0.92vw, 13px);
-  --font-md: clamp(13px, 1.08vw, 15px);
-  --font-lg: clamp(19px, 1.65vw, 23px);
-  --font-display: clamp(24px, 2.25vw, 31px);
+  --font-xs: clamp(11px, 0.82vw, 12px);
+  --font-sm: clamp(12px, 0.96vw, 14px);
+  --font-md: clamp(14px, 1.12vw, 16px);
+  --font-lg: clamp(20px, 1.7vw, 24px);
+  --font-display: clamp(26px, 2.3vw, 33px);
+  --mini-font-micro: 7.5px;
+  --mini-font-xs: 8.5px;
+  --mini-font-sm: 9.5px;
+  --mini-font-md: 11px;
+  --mini-row-height: 49px;
   --profit: #e95d57;
   --profit-soft: rgba(233, 93, 87, 0.12);
   --loss: #15956f;
@@ -51,6 +56,32 @@
   --radius-lg: 20px;
   --radius-md: 15px;
   --radius-sm: 11px;
+}
+
+:root[data-font-size="small"] {
+  --font-xs: clamp(10px, 0.78vw, 11px);
+  --font-sm: clamp(11px, 0.92vw, 13px);
+  --font-md: clamp(13px, 1.08vw, 15px);
+  --font-lg: clamp(19px, 1.65vw, 23px);
+  --font-display: clamp(24px, 2.25vw, 31px);
+  --mini-font-micro: 7px;
+  --mini-font-xs: 8px;
+  --mini-font-sm: 9px;
+  --mini-font-md: 10.5px;
+  --mini-row-height: 47px;
+}
+
+:root[data-font-size="large"] {
+  --font-xs: clamp(12px, 0.88vw, 13px);
+  --font-sm: clamp(13px, 1.02vw, 15px);
+  --font-md: clamp(15px, 1.18vw, 17px);
+  --font-lg: clamp(22px, 1.78vw, 26px);
+  --font-display: clamp(28px, 2.4vw, 35px);
+  --mini-font-micro: 8px;
+  --mini-font-xs: 9px;
+  --mini-font-sm: 10px;
+  --mini-font-md: 12px;
+  --mini-row-height: 52px;
 }
 
 @media (prefers-color-scheme: dark) {
