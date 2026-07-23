@@ -12,12 +12,15 @@ import type { AssetSummary } from "@/types/contracts";
 
 const store = usePortfolioStore();
 const pinned = ref(true);
-const fundAssets = computed(() =>
-  store.overview.assets
-    .filter((asset) => asset.kind === "fund")
+const sortMode = ref<"default" | "day-desc" | "day-asc">("default");
+const fundAssets = computed(() => {
+  const assets = store.overview.assets.filter((asset) => asset.kind === "fund");
+  if (sortMode.value === "default") return assets;
+  const direction = sortMode.value === "day-desc" ? -1 : 1;
+  return assets
     .slice()
-    .sort((left, right) => right.dayProfitPercent - left.dayProfitPercent),
-);
+    .sort((left, right) => (left.dayProfitPercent - right.dayProfitPercent) * direction);
+});
 const updatedTime = computed(() => timeLabel(store.overview.calculatedAt));
 
 function timeLabel(value: string) {
@@ -52,6 +55,10 @@ function signedMoney(value: number) {
 
 function valueClass(value: number) {
   return value >= 0 ? "profit" : "loss";
+}
+
+function cycleSort() {
+  sortMode.value = sortMode.value === "day-desc" ? "day-asc" : "day-desc";
 }
 
 async function togglePin() {
@@ -108,9 +115,17 @@ onBeforeUnmount(() => store.dispose());
       <section class="fund-panel">
         <div class="fund-head">
           <span class="fund-title">基金 <small>{{ fundAssets.length }}</small></span>
-          <span>净值</span>
-          <span>涨跌</span>
-          <span>当日收益</span>
+          <span>当前净值</span>
+          <button
+            type="button"
+            class="fund-sort"
+            :class="{ ascending: sortMode === 'day-asc', active: sortMode !== 'default' }"
+            :aria-label="sortMode === 'default' ? '按当日盈亏从高到低排序' : sortMode === 'day-asc' ? '当前从低到高，点击切换为从高到低' : '当前从高到低，点击切换为从低到高'"
+            @click="cycleSort"
+          >
+            <span>当日盈亏</span><i />
+          </button>
+          <span>总盈亏</span>
           <span>更新</span>
         </div>
         <div v-if="fundAssets.length" class="fund-scroll">
@@ -120,8 +135,18 @@ onBeforeUnmount(() => store.dispose());
               <small>{{ asset.code }}</small>
             </div>
             <span class="mono-numbers">{{ navLabel(asset) }}</span>
-            <strong class="mono-numbers" :class="valueClass(asset.dayProfitPercent)">{{ signedPercent(asset.dayProfitPercent) }}</strong>
-            <span class="mono-numbers" :class="valueClass(asset.dayProfit)">{{ signedMoney(asset.dayProfit) }}</span>
+            <div class="fund-metric" :class="valueClass(asset.dayProfit)">
+              <strong class="mono-numbers">{{ signedMoney(asset.dayProfit) }}</strong>
+              <small class="mono-numbers">{{ signedPercent(asset.dayProfitPercent) }}</small>
+            </div>
+            <div v-if="asset.costKnown" class="fund-metric" :class="valueClass(asset.totalProfit)">
+              <strong class="mono-numbers">{{ signedMoney(asset.totalProfit) }}</strong>
+              <small class="mono-numbers">{{ signedPercent(asset.totalProfitPercent) }}</small>
+            </div>
+            <div v-else class="fund-metric unknown">
+              <strong>—</strong>
+              <small>未录成本</small>
+            </div>
             <time class="mono-numbers">{{ timeLabel(asset.updatedAt) }}</time>
           </div>
         </div>
@@ -161,7 +186,7 @@ onBeforeUnmount(() => store.dispose());
 }
 
 .mini-glass {
-  --mini-fund-grid: minmax(0, 1fr) 54px 52px 72px 36px;
+  --mini-fund-grid: minmax(0, 1fr) 52px 74px 74px 36px;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -359,7 +384,8 @@ header {
   border-bottom: 1px solid var(--hairline);
 }
 
-.fund-head span:not(:first-child) {
+.fund-head > :not(:first-child) {
+  justify-self: end;
   text-align: right;
 }
 
@@ -383,6 +409,50 @@ header {
   place-items: center;
 }
 
+.fund-sort {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-self: end;
+  padding: 0;
+  overflow: visible;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.fund-sort::before,
+.fund-sort::after {
+  display: none;
+}
+
+.fund-sort i {
+  width: 0;
+  height: 0;
+  border-right: 3px solid transparent;
+  border-bottom: 4.5px solid currentColor;
+  border-left: 3px solid transparent;
+  opacity: .38;
+  transform: rotate(180deg);
+  transition: opacity 150ms ease, transform 180ms ease;
+}
+
+.fund-sort.active {
+  color: var(--text-strong);
+}
+
+.fund-sort.active i {
+  opacity: .82;
+}
+
+.fund-sort.ascending i {
+  transform: rotate(0);
+}
+
 .fund-scroll {
   min-height: 0;
   overflow-x: hidden;
@@ -392,7 +462,7 @@ header {
 }
 
 .fund-row {
-  min-height: 46px;
+  min-height: 49px;
   padding: 6px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--hairline) 68%, transparent);
   transition: background-color 150ms ease;
@@ -412,10 +482,6 @@ header {
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.fund-row > strong {
-  font-weight: 720;
 }
 
 .fund-row time {
@@ -442,6 +508,37 @@ header {
   font-size: 7.5px;
   color: var(--text-muted);
   letter-spacing: .04em;
+}
+
+.fund-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.fund-metric strong {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 8.5px;
+  font-weight: 710;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fund-metric small {
+  font-size: 8px;
+  font-weight: 680;
+}
+
+.fund-metric.unknown {
+  color: var(--text-muted);
+}
+
+.fund-metric.unknown small {
+  font-size: 7px;
+  font-weight: 500;
 }
 
 .fund-empty {
