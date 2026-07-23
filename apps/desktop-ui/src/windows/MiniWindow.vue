@@ -203,7 +203,27 @@ onBeforeUnmount(() => store.dispose());
 }
 
 :global(html[data-platform="windows"] .mini-glass) {
-  border: 1px solid var(--hairline-strong);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:global(html[data-platform="windows"] .mini-actions),
+:global(html[data-platform="windows"] .mini-markets),
+:global(html[data-platform="windows"] .fund-panel),
+:global(html[data-platform="windows"] .mini-totals) {
+  background: var(--material-elevated);
+}
+
+:global(html[data-platform="windows"] .fund-head) {
+  background: var(--glass-subtle);
+}
+
+:global(html[data-platform="windows"] .mini-actions),
+:global(html[data-platform="windows"] .mini-markets),
+:global(html[data-platform="windows"] .fund-panel),
+:global(html[data-platform="windows"] .mini-totals) {
+  box-shadow: 0 5px 16px rgba(43, 57, 82, 0.07), 0 1px 0 var(--material-highlight) inset;
 }
 
 header,
@@ -397,6 +417,26 @@ header {
   align-self: center;
   justify-self: stretch;
   text-align: center;
+}
+
+:global(html[data-platform="macos"] .fund-head) {
+  align-items: stretch;
+}
+
+:global(html[data-platform="macos"] .fund-head > *) {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+:global(html[data-platform="macos"] .fund-head .fund-title) {
+  justify-content: flex-start;
+}
+
+:global(html[data-platform="macos"] .fund-head .fund-sort) {
+  justify-content: flex-end;
 }
 
 .fund-title {

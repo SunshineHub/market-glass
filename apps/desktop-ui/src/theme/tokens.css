@@ -114,6 +114,105 @@
   }
 }
 
+:root[data-platform="windows"] {
+  font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+
+  --font-mono: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-xs: clamp(12px, 0.86vw, 13px);
+  --font-sm: clamp(13px, 1vw, 15px);
+  --font-md: clamp(15px, 1.16vw, 17px);
+  --font-lg: clamp(22px, 1.76vw, 26px);
+  --font-display: clamp(28px, 2.34vw, 35px);
+  --mini-font-micro: 8.5px;
+  --mini-font-xs: 10px;
+  --mini-font-sm: 11px;
+  --mini-font-md: 12.5px;
+  --mini-row-height: 54px;
+
+  --windows-window-bg: #edf2f7;
+  --bg-a: #e7edf7;
+  --bg-b: #f4ebeb;
+  --bg-c: #e6f1ef;
+  --text-strong: #182235;
+  --text: #344055;
+  --text-muted: #687487;
+  --hairline: rgba(52, 65, 88, 0.12);
+  --hairline-strong: rgba(52, 65, 88, 0.19);
+  --glass: #f8fafc;
+  --glass-strong: #ffffff;
+  --glass-subtle: #f0f4f8;
+  --glass-hover: #e9eef6;
+  --material-content: #fbfcfe;
+  --material-elevated: #ffffff;
+  --material-hover: #f2f5fa;
+  --material-highlight: rgba(255, 255, 255, 0.9);
+  --sidebar-surface: #edf5f6;
+  --sidebar-glow: rgba(54, 166, 177, 0.12);
+  --content-surface: #f8f7f7;
+  --material-shadow: 0 1px 0 rgba(255, 255, 255, 0.96) inset,
+    0 7px 20px rgba(49, 63, 88, 0.07),
+    0 1px 3px rgba(49, 63, 88, 0.05);
+  --shadow: 0 18px 48px rgba(43, 57, 82, 0.15), 0 2px 7px rgba(43, 57, 82, 0.08);
+  --shadow-soft: 0 9px 26px rgba(43, 57, 82, 0.09);
+  --blur: none;
+}
+
+:root[data-platform="windows"][data-font-size="small"] {
+  --font-xs: clamp(11px, 0.8vw, 12px);
+  --font-sm: clamp(12px, 0.94vw, 14px);
+  --font-md: clamp(14px, 1.1vw, 16px);
+  --font-lg: clamp(20px, 1.68vw, 24px);
+  --font-display: clamp(26px, 2.26vw, 33px);
+  --mini-font-micro: 8px;
+  --mini-font-xs: 9.5px;
+  --mini-font-sm: 10.5px;
+  --mini-font-md: 12px;
+  --mini-row-height: 52px;
+}
+
+:root[data-platform="windows"][data-font-size="large"] {
+  --font-xs: clamp(13px, 0.92vw, 14px);
+  --font-sm: clamp(14px, 1.06vw, 16px);
+  --font-md: clamp(16px, 1.22vw, 18px);
+  --font-lg: clamp(24px, 1.84vw, 28px);
+  --font-display: clamp(30px, 2.44vw, 37px);
+  --mini-font-micro: 9px;
+  --mini-font-xs: 10.5px;
+  --mini-font-sm: 11.5px;
+  --mini-font-md: 13px;
+  --mini-row-height: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-platform="windows"] {
+    --windows-window-bg: #111722;
+    --bg-a: #151c29;
+    --bg-b: #241d20;
+    --bg-c: #14231f;
+    --text-strong: #f2f5fa;
+    --text: #d8dee9;
+    --text-muted: #9ba6b8;
+    --hairline: rgba(255, 255, 255, 0.09);
+    --hairline-strong: rgba(255, 255, 255, 0.15);
+    --glass: #1c2431;
+    --glass-strong: #222b39;
+    --glass-subtle: #283241;
+    --glass-hover: #323d4d;
+    --material-content: #202936;
+    --material-elevated: #273140;
+    --material-hover: #2d3848;
+    --material-highlight: rgba(255, 255, 255, 0.1);
+    --sidebar-surface: #162730;
+    --sidebar-glow: rgba(43, 159, 171, 0.13);
+    --content-surface: #211f25;
+    --material-shadow: 0 1px 0 rgba(255, 255, 255, 0.07) inset,
+      0 8px 22px rgba(0, 0, 0, 0.2);
+    --shadow: 0 20px 55px rgba(0, 0, 0, 0.38);
+    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.22);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -551,6 +551,10 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
+:global(html[data-platform="windows"] .main-shell) {
+  padding: 0;
+}
+
 .main-glass {
   display: flex;
   width: 100%;
@@ -566,6 +570,12 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
+:global(html[data-platform="windows"] .main-glass) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 main {
   display: flex;
   flex: 1;
@@ -576,6 +586,12 @@ main {
     radial-gradient(circle at 86% 0%, color-mix(in srgb, var(--bg-b) 38%, transparent), transparent 42%),
     radial-gradient(circle at 22% 108%, color-mix(in srgb, var(--bg-a) 24%, transparent), transparent 40%),
     linear-gradient(118deg, color-mix(in srgb, var(--content-surface) 90%, transparent), color-mix(in srgb, var(--content-surface) 68%, var(--bg-b)));
+}
+
+:global(html[data-platform="windows"] main) {
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--bg-b) 44%, transparent), transparent 40%),
+    linear-gradient(128deg, var(--content-surface), color-mix(in srgb, var(--content-surface) 84%, var(--bg-a)));
 }
 
 .page-stage {
@@ -612,6 +628,10 @@ main {
   padding: 14px 20px 10px 24px;
   background: linear-gradient(96deg, color-mix(in srgb, var(--content-surface) 72%, transparent), color-mix(in srgb, var(--bg-b) 18%, transparent));
   border-bottom: 1px solid var(--hairline);
+}
+
+:global(html[data-platform="windows"] .topbar) {
+  background: color-mix(in srgb, var(--content-surface) 94%, var(--bg-a));
 }
 
 .topbar-title {

@@ -251,6 +251,50 @@ button > i {
   letter-spacing: -0.035em;
 }
 
+html[data-platform="windows"],
+html[data-platform="windows"] body,
+html[data-platform="windows"] #app {
+  background: var(--windows-window-bg);
+}
+
+html[data-platform="windows"] body {
+  -webkit-font-smoothing: auto;
+  font-smooth: auto;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-platform="windows"] .app-background {
+  background: var(--windows-window-bg);
+}
+
+html[data-platform="windows"] .window-surface {
+  background:
+    radial-gradient(ellipse at 6% 2%, color-mix(in srgb, var(--bg-c) 72%, var(--windows-window-bg)), transparent 48%),
+    radial-gradient(ellipse at 96% 0%, color-mix(in srgb, var(--bg-b) 68%, var(--windows-window-bg)), transparent 46%),
+    linear-gradient(128deg, var(--bg-c), var(--bg-a) 48%, var(--bg-b));
+}
+
+html[data-platform="windows"] .window-surface::before,
+html[data-platform="windows"] .window-surface::after {
+  opacity: 0.2;
+  filter: blur(68px);
+}
+
+html[data-platform="windows"] .glass-panel,
+html[data-platform="windows"] .material-card,
+html[data-platform="windows"] .material-panel,
+html[data-platform="windows"] .sidebar,
+html[data-platform="windows"] [data-liquid-glass] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-platform="windows"] .mono-numbers {
+  font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
 .profit {
   color: var(--profit) !important;
 }
