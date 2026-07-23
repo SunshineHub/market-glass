@@ -1,4 +1,4 @@
-name: Build Windows Installer
+name: Build and Release Installers
 
 on:
   workflow_dispatch:
@@ -10,14 +10,24 @@ permissions:
   contents: write
 
 concurrency:
-  group: windows-installer-${{ github.ref }}
+  group: market-glass-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  windows-x64:
-    name: Windows x64 NSIS
-    runs-on: windows-latest
-    timeout-minutes: 45
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            platform: macos-latest
+            args: --target aarch64-apple-darwin --bundles app,dmg
+          - name: Windows x64
+            platform: windows-latest
+            args: --bundles nsis
 
     steps:
       - name: Checkout source
@@ -37,15 +47,22 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
 
-      - name: Use official crates.io in GitHub Actions
+      - name: Use official crates.io on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: Remove-Item .cargo/config.toml -ErrorAction SilentlyContinue
+
+      - name: Use official crates.io on macOS
+        if: runner.os == 'macOS'
+        run: rm -f .cargo/config.toml
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -56,49 +73,48 @@ jobs:
       - name: Test Rust workspace
         run: cargo test --workspace --locked
 
-      - name: Build Windows installer
-        run: pnpm tauri build --bundles nsis
-
-      - name: Generate SHA-256
-        id: package
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem "target/release/bundle/nsis/*-setup.exe" | Select-Object -First 1
-          if (-not $installer) {
-            throw "NSIS installer was not generated."
-          }
-          $checksumPath = Join-Path $installer.DirectoryName "SHA256SUMS.txt"
-          $hash = Get-FileHash $installer.FullName -Algorithm SHA256
-          "$($hash.Hash.ToLower())  $($installer.Name)" | Set-Content $checksumPath -Encoding utf8
-          "installer=$($installer.FullName)" >> $env:GITHUB_OUTPUT
-          "checksum=$checksumPath" >> $env:GITHUB_OUTPUT
-
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v6
+      - name: Build signed installers and updater artifacts
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         with:
-          name: Market-Glass-Windows-x64-${{ github.run_number }}
-          path: |
-            ${{ steps.package.outputs.installer }}
-            ${{ steps.package.outputs.checksum }}
-          if-no-files-found: error
-          retention-days: 30
+          tagName: v__VERSION__
+          releaseName: Market Glass v__VERSION__
+          releaseBody: |
+            此版本由 Market Glass 自动发布流程生成。
+            应用会通过签名校验后，在程序内部提示、下载并安装后续更新。
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
 
-      - name: Create or update draft release for version tag
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
+  publish:
+    name: Verify and publish release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          APP_VERSION="$(node -p 'require("./src-tauri/tauri.conf.json").version')"
+          echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Download updater manifest
         env:
           GH_TOKEN: ${{ github.token }}
+        run: gh release download "v${APP_VERSION}" --repo "${{ github.repository }}" --pattern latest.json --dir updater-manifest
+
+      - name: Validate updater platforms
         run: |
-          $tag = "${{ github.ref_name }}"
-          $installer = "${{ steps.package.outputs.installer }}"
-          $checksum = "${{ steps.package.outputs.checksum }}"
-          gh release view $tag --repo "${{ github.repository }}" *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag $installer $checksum --clobber --repo "${{ github.repository }}"
-          } else {
-            gh release create $tag $installer $checksum `
-              --draft `
-              --generate-notes `
-              --title "Market Glass $tag" `
-              --repo "${{ github.repository }}"
-          }
+          node -e "const m=require('./updater-manifest/latest.json'); for (const p of ['darwin-aarch64','windows-x86_64']) { if (!m.platforms?.[p]?.url || !m.platforms?.[p]?.signature) throw new Error('Missing updater platform: '+p) }"
+
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "v${APP_VERSION}" --repo "${{ github.repository }}" --draft=false

@@ -23,6 +23,7 @@
 - macOS 使用系统红黄绿窗口按钮和原生圆角；关闭只隐藏窗口并保留后台刷新，Windows 使用可点击的自绘窗口控制。
 - 极简窗口使用贴合原生圆角的单层玻璃表面，不再额外套一层矩形蒙版。
 - macOS 菜单栏与 Windows 系统托盘使用独立模板图标，支持打开双窗口、立即刷新和安全退出；macOS 菜单栏图标旁常驻显示今日盈亏比例。
+- 内置签名自动更新：启动后静默检查 GitHub Release，也可从顶部工具栏手动检查；发现新版本后展示更新说明与下载进度，校验通过后安装并重启。
 
 ## 本地运行
 
@@ -50,6 +51,8 @@ cargo test -p market-glass-providers live_provider_returns_global_indices_and_a_
 仅编译不打包：`pnpm tauri build --no-bundle`，产物位于 `target/release/market-glass-desktop`。
 
 Windows 可通过 GitHub Actions 自动生成 NSIS `setup.exe`；操作见 [Windows 自动打包与分发](docs/WINDOWS_RELEASE.md)。
+
+应用内更新与签名发布操作见 [自动更新与签名发布](docs/AUTO_UPDATE.md)。
 
 ## 导入说明
 
@@ -80,6 +83,7 @@ Windows 可通过 GitHub Actions 自动生成 NSIS `setup.exe`；操作见 [Wind
 - [产品设计](docs/PRODUCT_DESIGN.md)
 - [总体架构](docs/ARCHITECTURE.md)
 - [迭代路线](docs/ROADMAP.md)
+- [自动更新与签名发布](docs/AUTO_UPDATE.md)
 - [待确认事项](docs/OPEN_QUESTIONS.md)
 - [ADR-0001：跨平台技术栈](docs/adr/0001-cross-platform-stack.md)
 

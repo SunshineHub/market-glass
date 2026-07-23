@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AllocationCard from "@/components/AllocationCard.vue";
+import AppUpdateDialog, { type UpdateDialogState } from "@/components/AppUpdateDialog.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import AssetEditorDialog from "@/components/AssetEditorDialog.vue";
 import AssetList from "@/components/AssetList.vue";
@@ -24,6 +25,12 @@ import {
   setFontSize as persistFontSize,
   type FontSizePreference,
 } from "@/features/preferences/fontSize";
+import {
+  checkForAppUpdate,
+  getCurrentAppVersion,
+  installAppUpdate,
+  type AppUpdateInfo,
+} from "@/features/update/appUpdater";
 import { usePortfolioStore } from "@/stores/portfolio";
 import type { AssetSummary, PositionInput, PositionUpdateFailure } from "@/types/contracts";
 
@@ -46,6 +53,13 @@ const assetExportState = ref<"idle" | "saving" | "done" | "error">("idle");
 const fontSize = ref<FontSizePreference>(readFontSize());
 const fontMenuOpen = ref(false);
 const fontControl = ref<HTMLElement>();
+const updateDialogOpen = ref(false);
+const updateState = ref<UpdateDialogState>("current");
+const currentAppVersion = ref("0.1.3");
+const availableUpdate = ref<AppUpdateInfo>();
+const updateProgress = ref(0);
+const updateError = ref("");
+let automaticUpdateTimer: number | undefined;
 const titleMap: Record<string, [string, string]> = {
   overview: ["资产总览", "基金与全球市场的一站式观察"],
   analysis: ["资产分析", "行业分布与持仓数据覆盖"],
@@ -269,11 +283,78 @@ const exportButtonLabel = computed(() => {
   return "导出配置";
 });
 
+const updateButtonLabel = computed(() => {
+  if (updateState.value === "checking") return "正在检查应用更新";
+  if (availableUpdate.value) return `发现新版本 ${availableUpdate.value.version}`;
+  return "检查应用更新";
+});
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return typeof error === "string" && error ? error : "网络连接失败，请稍后重试。";
+}
+
+async function checkApplicationUpdate(showDialog: boolean) {
+  if (updateState.value === "checking") {
+    if (showDialog) updateDialogOpen.value = true;
+    return;
+  }
+  if (updateState.value === "downloading" || updateState.value === "installing") return;
+  if (showDialog) updateDialogOpen.value = true;
+  updateState.value = "checking";
+  updateError.value = "";
+  updateProgress.value = 0;
+  try {
+    currentAppVersion.value = await getCurrentAppVersion();
+    availableUpdate.value = (await checkForAppUpdate()) ?? undefined;
+    if (availableUpdate.value) {
+      updateState.value = "available";
+      updateDialogOpen.value = true;
+    } else {
+      updateState.value = "current";
+      if (!showDialog) updateDialogOpen.value = false;
+    }
+  } catch (error) {
+    availableUpdate.value = undefined;
+    updateState.value = "error";
+    updateError.value = errorMessage(error);
+    if (!showDialog) updateDialogOpen.value = false;
+  }
+}
+
+function openUpdateDialog() {
+  if (availableUpdate.value && updateState.value === "available") {
+    updateDialogOpen.value = true;
+    return;
+  }
+  void checkApplicationUpdate(true);
+}
+
+async function installAvailableUpdate() {
+  if (!availableUpdate.value || updateState.value === "downloading") return;
+  updateState.value = "downloading";
+  updateError.value = "";
+  updateProgress.value = 0;
+  try {
+    await installAppUpdate((progress) => {
+      if (progress.percent !== undefined) updateProgress.value = progress.percent;
+      if (progress.percent === 100) updateState.value = "installing";
+    });
+  } catch (error) {
+    updateState.value = "error";
+    updateError.value = errorMessage(error);
+  }
+}
+
 onMounted(() => {
   store.initialize();
   document.addEventListener("pointerdown", handleDocumentPointerDown);
+  automaticUpdateTimer = window.setTimeout(() => {
+    void checkApplicationUpdate(false);
+  }, 2_800);
 });
 onBeforeUnmount(() => {
+  if (automaticUpdateTimer !== undefined) window.clearTimeout(automaticUpdateTimer);
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
   store.dispose();
 });
@@ -316,6 +397,18 @@ onBeforeUnmount(() => {
                   </button>
                 </div>
               </Transition>
+            </div>
+            <div class="update-control" :class="{ available: Boolean(availableUpdate) }">
+              <IconButton
+                :label="updateButtonLabel"
+                :active="Boolean(availableUpdate) || updateState === 'checking'"
+                @click="openUpdateDialog"
+              >
+                <svg viewBox="0 0 24 24" :class="{ 'update-checking': updateState === 'checking' }">
+                  <path d="M12 4v11" /><path d="m8 11 4 4 4-4" /><path d="M5 19h14" />
+                </svg>
+              </IconButton>
+              <i v-if="availableUpdate" aria-hidden="true" />
             </div>
             <IconButton label="立即刷新" :active="store.refreshing" @click="store.refresh">
               <svg viewBox="0 0 24 24" :class="{ spinning: store.refreshing }"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
@@ -539,6 +632,17 @@ onBeforeUnmount(() => {
       @close="marketEditorOpen = false"
       @save="saveMarketIndices"
     />
+    <AppUpdateDialog
+      v-if="updateDialogOpen"
+      :state="updateState"
+      :current-version="currentAppVersion"
+      :update="availableUpdate"
+      :progress="updateProgress"
+      :error="updateError"
+      @close="updateDialogOpen = false"
+      @check="checkApplicationUpdate(true)"
+      @install="installAvailableUpdate"
+    />
   </div>
 </template>
 
@@ -667,6 +771,41 @@ h1 {
   position: relative;
   display: flex;
   -webkit-app-region: no-drag;
+}
+
+.update-control {
+  position: relative;
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.update-control > i {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  z-index: 4;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  background: var(--profit);
+  border: 2px solid var(--material-elevated);
+  border-radius: 99px;
+  box-sizing: content-box;
+}
+
+.update-control.available :deep(.icon-button) {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.update-checking {
+  animation: update-check 900ms ease-in-out infinite alternate;
+}
+
+@keyframes update-check {
+  from { opacity: .48; transform: translateY(-1px); }
+  to { opacity: 1; transform: translateY(1px); }
 }
 
 .font-size-icon {

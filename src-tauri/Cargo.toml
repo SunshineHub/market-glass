@@ -17,5 +17,8 @@ market-glass-application = { path = "../crates/application" }
 market-glass-infrastructure = { path = "../crates/infrastructure" }
 market-glass-providers = { path = "../crates/providers" }
 serde.workspace = true
+serde_json.workspace = true
 tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 tokio.workspace = true
