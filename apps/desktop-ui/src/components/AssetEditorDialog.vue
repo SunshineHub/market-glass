@@ -42,11 +42,18 @@ let lastAutoStrategy = "";
 
 const isFund = computed(() => form.kind === "fund");
 const automaticInvestmentCost = computed(() => {
-  if (!isFund.value || editing.value || form.unitCost.trim() === "") return "";
+  if (!isFund.value || form.unitCost.trim() === "") return "";
   const units = Number(normalized(form.units || "0"));
   const unitCost = Number(normalized(form.unitCost));
   if (!Number.isFinite(units) || !Number.isFinite(unitCost) || units < 0 || unitCost < 0) return "";
   return (units * unitCost).toFixed(2);
+});
+const currentAverageUnitCost = computed(() => {
+  if (!editing.value || !isFund.value) return "";
+  const units = Number(normalized(props.asset?.units || "0"));
+  const totalCost = Number(normalized(props.asset?.totalCost || "0"));
+  if (!Number.isFinite(units) || !Number.isFinite(totalCost) || units <= 0 || totalCost <= 0) return "";
+  return (totalCost / units).toFixed(4);
 });
 const metadataBadges = computed(() => {
   const metadata = fundMetadata.value;
@@ -102,7 +109,7 @@ function submitSingle() {
     code: isFund.value ? form.code : undefined,
     name: form.name,
     units: isFund.value ? normalized(form.units || "0") : undefined,
-    unitCost: isFund.value && !editing.value && form.unitCost.trim()
+    unitCost: isFund.value && form.unitCost.trim()
       ? normalized(form.unitCost)
       : undefined,
     totalCost: normalized(automaticInvestmentCost.value || form.totalCost || "0"),
@@ -270,13 +277,17 @@ onBeforeUnmount(resetLookup);
           <template v-else>基金资料暂时查询失败，不影响手动录入和保存。</template>
         </div>
         <label><span>资产名称</span><input v-model.trim="form.name" :placeholder="isFund ? '基金简称' : '例如：现金管理'" /></label>
-        <div v-if="isFund && !editing" class="field-row cost-row">
+        <div v-if="isFund" class="field-row cost-row">
           <label>
             <span>单位持仓成本（可选）</span>
-            <input v-model.trim="form.unitCost" inputmode="decimal" placeholder="例如 1.2345" />
+            <input
+              v-model.trim="form.unitCost"
+              inputmode="decimal"
+              :placeholder="currentAverageUnitCost ? `当前折算约 ${currentAverageUnitCost}` : '例如 1.2345'"
+            />
           </label>
           <label>
-            <span>{{ automaticInvestmentCost ? "本次投入成本（自动计算）" : "本次投入成本（可选）" }}</span>
+            <span>{{ automaticInvestmentCost ? (editing ? "累计投入成本（自动计算）" : "本次投入成本（自动计算）") : (editing ? "累计投入 / 成本（可直接修改）" : "本次投入成本（可选）") }}</span>
             <div class="calculated-input" :class="{ calculated: automaticInvestmentCost }">
               <input
                 v-model.trim="form.totalCost"
@@ -290,16 +301,15 @@ onBeforeUnmount(resetLookup);
         </div>
         <div v-else class="field-row">
           <label><span>累计投入 / 成本（可选）</span><input v-model.trim="form.totalCost" inputmode="decimal" placeholder="默认 0" /></label>
-          <label v-if="!isFund"><span>当前资产（可选）</span><input v-model.trim="form.manualValue" inputmode="decimal" placeholder="默认 0" /></label>
-          <label v-else><span>行业 / 策略标签</span><input v-model.trim="form.strategy" placeholder="例如：科技、医药、红利" /></label>
+          <label><span>当前资产（可选）</span><input v-model.trim="form.manualValue" inputmode="decimal" placeholder="默认 0" /></label>
         </div>
-        <label v-if="isFund && !editing"><span>行业 / 策略标签</span><input v-model.trim="form.strategy" placeholder="例如：科技、医药、红利" /></label>
+        <label v-if="isFund"><span>行业 / 策略标签</span><input v-model.trim="form.strategy" placeholder="例如：科技、医药、红利" /></label>
         <div v-if="!isFund" class="field-row">
           <label><span>当日盈亏百分比</span><input v-model.trim="form.manualDayPercent" inputmode="decimal" placeholder="例如 0.35" /></label>
           <label><span>数据来源</span><input v-model.trim="form.provider" placeholder="例如：手动录入、银行" /></label>
         </div>
         <p v-if="submitted && !valid" class="form-error">请填写名称并检查基金代码和数字格式；份额、单位成本和投入成本均可留空。</p>
-        <p v-else class="form-note">{{ editing ? '保存后会覆盖当前持仓的份额、累计成本和行业标签。' : isFund ? '填写单位持仓成本后，本次投入按“份额 × 单位成本”计算；同代码再次新增会累计每一笔份额与投入成本。' : '现金金额可为 0，并保留为本地观察资产。' }}</p>
+        <p v-else class="form-note">{{ editing ? (isFund ? '可直接修改累计成本；输入单位持仓成本后，将按当前份额重新计算累计投入。' : '保存后会覆盖当前现金资产、累计成本和分类。') : isFund ? '填写单位持仓成本后，本次投入按“份额 × 单位成本”计算；同代码再次新增会累计每一笔份额与投入成本。' : '现金金额可为 0，并保留为本地观察资产。' }}</p>
       </form>
 
       <div v-else class="import-workspace">
