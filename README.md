@@ -77,6 +77,11 @@ Windows 可通过 GitHub Actions 自动生成 NSIS `setup.exe`；操作见 [Wind
 - 行情源和系统视觉效果都可以替换或降级。
 - 数据库、接口和发布过程支持长期版本迁移。
 
+## 截图
+
+<img width="2360" height="1522" alt="image" src="https://github.com/user-attachments/assets/7b284beb-9525-4e0c-8a76-3a60e79d2f03" />
+
+
 ## 文档导航
 
 - [产品设计](docs/PRODUCT_DESIGN.md)
