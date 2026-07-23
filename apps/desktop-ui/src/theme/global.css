@@ -152,7 +152,7 @@ select:focus-visible {
   inset: 0 12% auto;
 }
 
-:is(button, [data-liquid-glass]) {
+[data-liquid-glass] {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -166,7 +166,7 @@ select:focus-visible {
     box-shadow 220ms ease;
 }
 
-:is(button, [data-liquid-glass])::before {
+[data-liquid-glass]::before {
   position: absolute;
   top: -35%;
   left: -72%;
@@ -182,7 +182,7 @@ select:focus-visible {
   transition: left 480ms cubic-bezier(.2,.78,.2,1), opacity 160ms ease;
 }
 
-:is(button, [data-liquid-glass])::after {
+[data-liquid-glass]::after {
   position: absolute;
   z-index: 1;
   content: "";
@@ -203,26 +203,26 @@ button > i {
   z-index: 2;
 }
 
-:is(button, [data-liquid-glass]):not(:disabled):hover::before {
+[data-liquid-glass]:not(:disabled):hover::before {
   left: 126%;
   opacity: .58;
 }
 
-:is(button, [data-liquid-glass]):not(:disabled):hover::after {
+[data-liquid-glass]:not(:disabled):hover::after {
   opacity: 1;
 }
 
-:is(button, [role="button"][data-liquid-glass]):not(:disabled):active {
+[data-liquid-glass]:not(:disabled):active {
   transform: scale(0.965);
   transition-duration: 80ms;
 }
 
 @media (prefers-color-scheme: dark) {
-  :is(button, [data-liquid-glass])::before {
+  [data-liquid-glass]::before {
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .2), transparent);
   }
 
-  :is(button, [data-liquid-glass])::after {
+  [data-liquid-glass]::after {
     background:
       radial-gradient(120px circle at 28% 10%, rgba(255, 255, 255, 0.17), transparent 58%),
       linear-gradient(120deg, rgba(255, 255, 255, 0.07), transparent 36% 68%, rgba(124, 151, 255, 0.05));
@@ -230,12 +230,12 @@ button > i {
 }
 
 @media (hover: none), (prefers-reduced-motion: reduce) {
-  :is(button, [data-liquid-glass]) {
+  [data-liquid-glass] {
     transform: none;
   }
 
-  :is(button, [data-liquid-glass])::before,
-  :is(button, [data-liquid-glass])::after {
+  [data-liquid-glass]::before,
+  [data-liquid-glass]::after {
     display: none;
   }
 }
@@ -258,8 +258,9 @@ button > i {
   color: var(--text-muted) !important;
 }
 
-.drag-region {
-  -webkit-app-region: drag;
+[data-window-drag] {
+  cursor: default;
+  touch-action: none;
 }
 
 .no-drag {

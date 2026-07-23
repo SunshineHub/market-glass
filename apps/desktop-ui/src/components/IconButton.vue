@@ -15,9 +15,10 @@ withDefaults(
     class="icon-button no-drag"
     :class="[{ active }, size]"
     :aria-label="label"
-    data-liquid-glass
   >
-    <slot />
+    <span class="icon-layer" aria-hidden="true">
+      <slot />
+    </span>
   </button>
 </template>
 
@@ -34,7 +35,17 @@ withDefaults(
   border-radius: 12px;
   contain: paint;
   place-items: center;
-  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transform: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 180ms ease;
+}
+
+.icon-button::before,
+.icon-button::after {
+  display: none;
 }
 
 .icon-button:hover,
@@ -42,6 +53,11 @@ withDefaults(
   color: var(--text-strong);
   background: var(--glass-hover);
   border-color: var(--hairline-strong);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--text-strong) 6%, transparent), 0 1px 0 var(--material-highlight) inset;
+}
+
+.icon-button:active {
+  transform: none;
 }
 
 .icon-button.small {
@@ -50,7 +66,17 @@ withDefaults(
   border-radius: 10px;
 }
 
-.icon-button :deep(svg) {
+.icon-layer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  place-items: center;
+}
+
+.icon-layer :deep(svg) {
   width: 17px;
   height: 17px;
   fill: none;
@@ -58,12 +84,10 @@ withDefaults(
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  position: relative;
-  z-index: 4;
   pointer-events: none;
 }
 
-.icon-button :deep(svg *) {
+.icon-layer :deep(svg *) {
   pointer-events: none;
 }
 </style>

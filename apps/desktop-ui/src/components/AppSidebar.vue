@@ -12,7 +12,7 @@ const items = [
 
 <template>
   <aside class="sidebar">
-    <div class="brand drag-region" data-tauri-drag-region>
+    <div class="brand" data-window-drag>
       <div class="brand-mark"><svg viewBox="0 0 32 32"><path d="m5.5 23 7.7-7.5 5.8 3.8 8.7-11.8" /><circle cx="27.7" cy="7.5" r="2" /></svg></div>
       <div><strong>澄明行情</strong><span>Market Glass</span></div>
     </div>

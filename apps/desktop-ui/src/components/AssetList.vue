@@ -123,7 +123,7 @@ function sourceLabel(provider: string) {
         <h3>{{ title }}</h3>
       </div>
       <div class="list-actions">
-        <button v-if="assets.length" type="button" class="batch-button" @click="toggleSelectionMode">
+        <button v-if="assets.length" type="button" class="batch-button" data-liquid-glass @click="toggleSelectionMode">
           <svg v-if="!selectionMode" viewBox="0 0 24 24"><path d="M5 7h2M10 7h9M5 12h2M10 12h9M5 17h2M10 17h9" /></svg>
           <svg v-else viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" /></svg>
           {{ selectionMode ? "结束批量" : "批量管理" }}
@@ -155,21 +155,21 @@ function sourceLabel(provider: string) {
 
     <div v-if="assets.length" class="asset-columns" :class="{ selecting: selectionMode }">
       <span v-if="selectionMode" />
-      <span>基金</span>
-      <span>当前资产</span>
+      <span class="column-name">基金</span>
+      <span class="column-number">当前资产</span>
       <button
         v-if="sortable"
         type="button"
-        class="column-sort"
+        class="column-sort column-number"
         :class="{ ascending: sortMode === 'day-asc', active: sortMode !== 'default' }"
         :aria-label="sortMode === 'default' ? '按当日涨跌幅从高到低排序' : sortMode === 'day-asc' ? '当前从低到高，点击切换为从高到低' : '当前从高到低，点击切换为从低到高'"
         @click="cycleSort"
       >
         <span>当日盈亏</span><i />
       </button>
-      <span v-else>当日盈亏</span>
-      <span>总盈亏</span>
-      <span>来源 / 更新</span>
+      <span v-else class="column-number">当日盈亏</span>
+      <span class="column-number">总盈亏</span>
+      <span class="column-number">来源 / 更新</span>
     </div>
 
     <div v-if="assets.length" class="rows">
@@ -366,20 +366,23 @@ header button svg {
   min-height: 0;
   min-width: 0;
   padding-top: 3px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-width: thin;
 }
 
 .asset-columns,
 .asset-row {
   display: grid;
-  grid-template-columns: minmax(200px, 1.45fr) minmax(105px, .78fr) minmax(128px, 1fr) minmax(128px, 1fr) 82px;
+  grid-template-columns: minmax(190px, 1.5fr) minmax(100px, .78fr) repeat(2, minmax(116px, .92fr)) 86px;
   gap: 12px;
 }
 
 .asset-columns {
   align-items: center;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 7px 12px;
+  overflow: hidden;
   font-size: var(--font-xs);
   font-weight: 620;
   color: var(--text-muted);
@@ -388,7 +391,8 @@ header button svg {
   box-shadow: 0 1px 0 color-mix(in srgb, var(--material-highlight) 58%, transparent) inset;
 }
 
-.asset-columns > span:last-child {
+.asset-columns > .column-number {
+  justify-self: end;
   text-align: right;
 }
 
@@ -396,7 +400,7 @@ header button svg {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  justify-self: start;
+  justify-self: end;
   padding: 0;
   font-size: inherit;
   font-weight: inherit;
@@ -431,14 +435,14 @@ header button svg {
 .column-sort.ascending i { transform: rotate(0); }
 
 .asset-row {
-  padding: 12px 10px;
+  padding: 12px;
   border-radius: 12px;
-  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .asset-columns.selecting,
 .asset-row.selecting {
-  grid-template-columns: 26px minmax(200px, 1.45fr) minmax(105px, .78fr) minmax(128px, 1fr) minmax(128px, 1fr) 82px;
+  grid-template-columns: 26px minmax(178px, 1.45fr) minmax(94px, .74fr) repeat(2, minmax(110px, .9fr)) 80px;
 }
 
 .row-check { justify-content: center; cursor: pointer; }
@@ -497,6 +501,11 @@ header button svg {
   min-width: 0;
 }
 
+.asset-metric {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .asset-identity strong {
   overflow: hidden;
   font-size: 12px;
@@ -520,7 +529,7 @@ header button svg {
 .asset-metric > div {
   flex-direction: column;
   gap: 3px;
-  align-items: flex-start;
+  align-items: flex-end;
   margin-top: 0;
   font-size: var(--font-sm);
 }
@@ -601,13 +610,13 @@ header button svg {
 @media (max-width: 1060px) {
   .asset-columns,
   .asset-row {
-    grid-template-columns: minmax(176px, 1.35fr) minmax(94px, .75fr) repeat(2, minmax(112px, 1fr)) 72px;
+    grid-template-columns: minmax(164px, 1.35fr) minmax(88px, .72fr) repeat(2, minmax(100px, .92fr)) 72px;
     gap: 9px;
   }
 
   .asset-columns.selecting,
   .asset-row.selecting {
-    grid-template-columns: 24px minmax(164px, 1.3fr) minmax(88px, .72fr) repeat(2, minmax(106px, 1fr)) 68px;
+    grid-template-columns: 24px minmax(152px, 1.28fr) minmax(82px, .68fr) repeat(2, minmax(94px, .88fr)) 68px;
   }
 }
 </style>

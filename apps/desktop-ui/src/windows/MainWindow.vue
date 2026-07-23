@@ -125,7 +125,7 @@ function handleWindowPointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
-  if (!target.closest(".drag-region")) return;
+  if (!target.closest("[data-window-drag]")) return;
   if (target.closest(".no-drag, button, a, input, select, textarea, [role='button']")) return;
   void startDraggingCurrentWindow();
 }
@@ -257,8 +257,8 @@ onBeforeUnmount(() => store.dispose());
       <AppSidebar :active="active" @select="active = $event" />
 
       <main>
-        <header class="topbar">
-          <div class="topbar-title drag-region" data-tauri-drag-region>
+        <header class="topbar" data-window-drag>
+          <div class="topbar-title">
             <h1>{{ pageTitle[0] }}</h1>
             <p>{{ pageTitle[1] }}</p>
           </div>
