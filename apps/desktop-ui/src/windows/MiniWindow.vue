@@ -382,6 +382,7 @@ header {
   padding: 0 10px;
   font-size: var(--mini-font-xs);
   font-weight: 640;
+  line-height: 1;
   color: var(--text-muted);
   letter-spacing: .01em;
   background: color-mix(in srgb, var(--glass-subtle) 48%, transparent);
@@ -392,15 +393,17 @@ header {
   min-width: 0;
 }
 
-.fund-head > :not(:first-child) {
+.fund-head > * {
+  align-self: center;
   justify-self: stretch;
-  text-align: right;
+  text-align: center;
 }
 
 .fund-title {
   display: inline-flex;
   gap: 5px;
   align-items: center;
+  justify-content: center;
   width: 100%;
   color: var(--text);
 }
@@ -423,8 +426,8 @@ header {
   width: 100%;
   gap: 4px;
   align-items: center;
-  justify-content: flex-end;
-  justify-self: end;
+  justify-content: center;
+  justify-self: stretch;
   padding: 0;
   overflow: visible;
   font-size: inherit;
