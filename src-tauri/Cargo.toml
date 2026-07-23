@@ -1,0 +1,21 @@
+[package]
+name = "market-glass-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "market_glass_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+market-glass-application = { path = "../crates/application" }
+market-glass-infrastructure = { path = "../crates/infrastructure" }
+market-glass-providers = { path = "../crates/providers" }
+serde.workspace = true
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tokio.workspace = true

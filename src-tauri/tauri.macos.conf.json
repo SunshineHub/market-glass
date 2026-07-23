@@ -1,0 +1,45 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Market Glass",
+        "url": "index.html?window=main",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 980,
+        "minHeight": 660,
+        "center": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": false,
+        "shadow": true,
+        "resizable": true
+      },
+      {
+        "label": "mini",
+        "title": "Market Glass Mini",
+        "url": "index.html?window=mini",
+        "width": 420,
+        "height": 300,
+        "minWidth": 420,
+        "minHeight": 300,
+        "maxWidth": 420,
+        "maxHeight": 300,
+        "decorations": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["popover"],
+          "state": "active",
+          "radius": 22
+        },
+        "shadow": true,
+        "resizable": false,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
+      }
+    ]
+  }
+}

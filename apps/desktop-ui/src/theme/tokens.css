@@ -1,0 +1,95 @@
+:root {
+  color-scheme: light dark;
+  font-family:
+    Inter, "SF Pro Display", "SF Pro Text", "Segoe UI Variable", "Segoe UI",
+    system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --font-mono: "SF Mono", "Cascadia Code", "Segoe UI Mono", ui-monospace, monospace;
+  --font-xs: clamp(10px, 0.78vw, 11px);
+  --font-sm: clamp(11px, 0.92vw, 13px);
+  --font-md: clamp(13px, 1.08vw, 15px);
+  --font-lg: clamp(19px, 1.65vw, 23px);
+  --font-display: clamp(24px, 2.25vw, 31px);
+  --profit: #e95d57;
+  --profit-soft: rgba(233, 93, 87, 0.12);
+  --loss: #15956f;
+  --loss-soft: rgba(21, 149, 111, 0.12);
+  --accent: #6078f4;
+  --accent-soft: rgba(96, 120, 244, 0.13);
+  --warning: #d88b2c;
+
+  --bg-a: #e8edf8;
+  --bg-b: #f6e8e5;
+  --bg-c: #e8f3ef;
+  --text-strong: #172033;
+  --text: rgba(23, 32, 51, 0.84);
+  --text-muted: rgba(23, 32, 51, 0.61);
+  --hairline: rgba(38, 48, 72, 0.11);
+  --hairline-strong: rgba(38, 48, 72, 0.17);
+  --glass: rgba(255, 255, 255, 0.47);
+  --glass-strong: rgba(255, 255, 255, 0.68);
+  --glass-subtle: rgba(255, 255, 255, 0.29);
+  --glass-hover: rgba(255, 255, 255, 0.76);
+  --material-content: rgba(255, 255, 255, 0.46);
+  --material-elevated: rgba(255, 255, 255, 0.62);
+  --material-hover: rgba(255, 255, 255, 0.42);
+  --material-highlight: rgba(255, 255, 255, 0.78);
+  --sidebar-surface: rgba(225, 240, 245, 0.78);
+  --sidebar-glow: rgba(58, 183, 194, 0.2);
+  --content-surface: rgba(251, 248, 246, 0.64);
+  --material-shadow: 0 1px 0 rgba(255, 255, 255, 0.58) inset,
+    0 -1px 0 rgba(63, 74, 103, 0.035) inset,
+    0 9px 24px rgba(52, 64, 92, 0.075),
+    0 2px 5px rgba(52, 64, 92, 0.045);
+  --shadow: 0 24px 65px rgba(64, 75, 102, 0.18), 0 2px 8px rgba(64, 75, 102, 0.08);
+  --shadow-soft: 0 12px 35px rgba(64, 75, 102, 0.1);
+  --blur: blur(32px) saturate(168%);
+
+  --radius-xl: 26px;
+  --radius-lg: 20px;
+  --radius-md: 15px;
+  --radius-sm: 11px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-a: #101522;
+    --bg-b: #201717;
+    --bg-c: #10201d;
+    --text-strong: #f5f7fc;
+    --text: rgba(245, 247, 252, 0.84);
+    --text-muted: rgba(245, 247, 252, 0.59);
+    --hairline: rgba(255, 255, 255, 0.09);
+    --hairline-strong: rgba(255, 255, 255, 0.16);
+    --glass: rgba(21, 26, 38, 0.5);
+    --glass-strong: rgba(27, 33, 46, 0.7);
+    --glass-subtle: rgba(255, 255, 255, 0.055);
+    --glass-hover: rgba(255, 255, 255, 0.11);
+    --material-content: rgba(31, 37, 51, 0.58);
+    --material-elevated: rgba(38, 45, 61, 0.72);
+    --material-hover: rgba(255, 255, 255, 0.075);
+    --material-highlight: rgba(255, 255, 255, 0.14);
+    --sidebar-surface: rgba(17, 33, 42, 0.82);
+    --sidebar-glow: rgba(40, 161, 172, 0.18);
+    --content-surface: rgba(28, 25, 31, 0.7);
+    --material-shadow: 0 1px 0 rgba(255, 255, 255, 0.09) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.16) inset,
+      0 12px 30px rgba(0, 0, 0, 0.16),
+      0 2px 7px rgba(0, 0, 0, 0.15);
+    --shadow: 0 28px 75px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.28);
+    --shadow-soft: 0 14px 38px rgba(0, 0, 0, 0.24);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

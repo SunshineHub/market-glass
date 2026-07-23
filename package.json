@@ -1,0 +1,17 @@
+{
+  "name": "market-glass",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "pnpm --filter @market-glass/desktop-ui dev",
+    "build": "pnpm --filter @market-glass/desktop-ui build",
+    "typecheck": "pnpm --filter @market-glass/desktop-ui typecheck",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4"
+  }
+}
