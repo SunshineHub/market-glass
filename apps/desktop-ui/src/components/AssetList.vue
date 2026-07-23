@@ -39,7 +39,8 @@ const emit = defineEmits<{
 const sortMode = ref<"default" | "day-desc" | "day-asc">("default");
 const selectionMode = ref(false);
 const selectedIds = ref<string[]>([]);
-const confirmAction = ref<"selected" | "all">();
+const confirmAction = ref<"single" | "selected" | "all">();
+const singleDeleteId = ref<string>();
 const displayedAssets = computed(() => {
   if (sortMode.value === "default") return props.assets;
   const direction = sortMode.value === "day-desc" ? -1 : 1;
@@ -54,7 +55,11 @@ const allSelected = computed(
   () => props.assets.length > 0 && props.assets.every((asset) => selectedIds.value.includes(asset.id)),
 );
 const pendingDeleteIds = computed(() =>
-  confirmAction.value === "all" ? props.assets.map((asset) => asset.id) : selectedIds.value,
+  confirmAction.value === "all"
+    ? props.assets.map((asset) => asset.id)
+    : confirmAction.value === "single" && singleDeleteId.value
+      ? [singleDeleteId.value]
+      : selectedIds.value,
 );
 const selectedAssets = computed(() =>
   props.assets.filter((asset) => selectedIds.value.includes(asset.id)),
@@ -92,7 +97,13 @@ function confirmDelete() {
   if (!ids.length) return;
   emit("remove", ids);
   confirmAction.value = undefined;
+  singleDeleteId.value = undefined;
   selectedIds.value = [];
+}
+
+function requestSingleDelete(id: string) {
+  singleDeleteId.value = id;
+  confirmAction.value = "single";
 }
 
 function timeLabel(value: string) {
@@ -174,6 +185,7 @@ function sourceLabel(provider: string) {
       <span v-else class="column-number">当日盈亏</span>
       <span class="column-number">总盈亏</span>
       <span class="column-number">来源 / 更新</span>
+      <span class="column-actions">操作</span>
     </div>
 
     <div v-if="assets.length" class="rows">
@@ -182,13 +194,12 @@ function sourceLabel(provider: string) {
           <input type="checkbox" :checked="selectedIds.includes(asset.id)" @change="toggleAsset(asset.id, ($event.target as HTMLInputElement).checked)" />
           <i><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9" /></svg></i>
         </label>
-        <button type="button" class="asset-identity asset-edit" :disabled="selectionMode" :aria-label="`编辑 ${asset.name}`" @click="$emit('edit', asset)">
+        <div class="asset-identity">
           <div>
             <strong>{{ asset.name }}</strong>
             <span>{{ asset.code ? `${asset.code} · ` : "" }}{{ asset.strategy }}</span>
           </div>
-          <svg viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>
-        </button>
+        </div>
         <div class="asset-metric asset-value">
           <MoneyValue :value="asset.currentValue" :private="private" />
         </div>
@@ -224,6 +235,28 @@ function sourceLabel(provider: string) {
           </span>
           <small>{{ timeLabel(asset.updatedAt) }}</small>
         </div>
+        <div class="row-actions">
+          <button
+            type="button"
+            class="row-action edit-action"
+            :disabled="selectionMode || deleting"
+            :aria-label="`编辑 ${asset.name}`"
+            title="编辑资产"
+            @click="$emit('edit', asset)"
+          >
+            <svg viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>
+          </button>
+          <button
+            type="button"
+            class="row-action delete-action"
+            :disabled="selectionMode || deleting"
+            :aria-label="`删除 ${asset.name}`"
+            title="删除资产"
+            @click="requestSingleDelete(asset.id)"
+          >
+            <svg viewBox="0 0 24 24"><path d="M5 7h14"/><path d="M9 7V4h6v3"/><path d="m8 10 .7 9h6.6l.7-9"/><path d="M11 11v5M13 11v5"/></svg>
+          </button>
+        </div>
       </article>
     </div>
 
@@ -234,13 +267,19 @@ function sourceLabel(provider: string) {
   </section>
   <ConfirmDialog
     v-if="confirmAction"
-    :title="confirmAction === 'all' ? `清空${title}？` : `删除 ${pendingDeleteIds.length} 项资产？`"
+    :title="confirmAction === 'all'
+      ? `清空${title}？`
+      : confirmAction === 'single'
+        ? '删除这项资产？'
+        : `删除 ${pendingDeleteIds.length} 项资产？`"
     :description="confirmAction === 'all'
       ? `将从本机永久删除当前列表中的 ${pendingDeleteIds.length} 项资产，此操作无法撤销。`
-      : '所选资产会从本机持仓库中永久删除，此操作无法撤销。'"
+      : confirmAction === 'single'
+        ? '该基金的份额、投入成本与本地持仓信息会一并永久删除，此操作无法撤销。'
+        : '所选资产的份额、投入成本与本地持仓信息会一并永久删除，此操作无法撤销。'"
     :confirm-label="confirmAction === 'all' ? '确认清空' : '确认删除'"
     :busy="deleting"
-    @close="confirmAction = undefined"
+    @close="confirmAction = undefined; singleDeleteId = undefined"
     @confirm="confirmDelete"
   />
 </template>
@@ -378,8 +417,8 @@ header button svg {
 .asset-columns,
 .asset-row {
   display: grid;
-  grid-template-columns: minmax(190px, 1.5fr) minmax(100px, .78fr) repeat(2, minmax(116px, .92fr)) 86px;
-  gap: 12px;
+  grid-template-columns: minmax(184px, 1.5fr) minmax(96px, .76fr) repeat(2, minmax(110px, .9fr)) 82px 64px;
+  gap: 10px;
 }
 
 .asset-columns {
@@ -398,6 +437,11 @@ header button svg {
 .asset-columns > .column-number {
   justify-self: end;
   text-align: right;
+}
+
+.column-actions {
+  justify-self: center;
+  text-align: center;
 }
 
 .column-sort {
@@ -446,7 +490,7 @@ header button svg {
 
 .asset-columns.selecting,
 .asset-row.selecting {
-  grid-template-columns: 26px minmax(178px, 1.45fr) minmax(94px, .74fr) repeat(2, minmax(110px, .9fr)) 80px;
+  grid-template-columns: 26px minmax(164px, 1.4fr) minmax(88px, .7fr) repeat(2, minmax(102px, .86fr)) 74px 58px;
 }
 
 .row-check { justify-content: center; cursor: pointer; }
@@ -459,43 +503,6 @@ header button svg {
 .asset-identity {
   min-width: 0;
 }
-
-.asset-edit {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  overflow: visible;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.asset-edit::before,
-.asset-edit::after { display: none; }
-.asset-edit:disabled { cursor: default; }
-.asset-edit > svg {
-  flex: 0 0 13px;
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: .34;
-  transform: translateX(0);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-.asset-row:hover .asset-edit:not(:disabled) > svg,
-.asset-edit:focus-visible > svg { opacity: .86; transform: translateX(0); }
 
 .asset-identity > div,
 .asset-metric,
@@ -593,6 +600,66 @@ header button svg {
   margin: 0;
 }
 
+.row-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-action {
+  display: grid;
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--material-elevated) 70%, transparent);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: 0 1px 0 var(--material-highlight) inset;
+  place-items: center;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.row-action::before,
+.row-action::after {
+  display: none;
+}
+
+.row-action svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.row-action:hover:not(:disabled),
+.row-action:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--hairline));
+}
+
+.row-action.delete-action:hover:not(:disabled),
+.row-action.delete-action:focus-visible {
+  color: var(--profit);
+  background: var(--profit-soft);
+  border-color: color-mix(in srgb, var(--profit) 28%, var(--hairline));
+}
+
+.row-action:disabled {
+  cursor: default;
+  opacity: .36;
+}
+
 .empty-state {
   display: grid;
   min-height: 150px;
@@ -614,13 +681,13 @@ header button svg {
 @media (max-width: 1060px) {
   .asset-columns,
   .asset-row {
-    grid-template-columns: minmax(164px, 1.35fr) minmax(88px, .72fr) repeat(2, minmax(100px, .92fr)) 72px;
-    gap: 9px;
+    grid-template-columns: minmax(148px, 1.34fr) minmax(82px, .68fr) repeat(2, minmax(92px, .86fr)) 68px 60px;
+    gap: 7px;
   }
 
   .asset-columns.selecting,
   .asset-row.selecting {
-    grid-template-columns: 24px minmax(152px, 1.28fr) minmax(82px, .68fr) repeat(2, minmax(94px, .88fr)) 68px;
+    grid-template-columns: 24px minmax(136px, 1.25fr) minmax(76px, .64fr) repeat(2, minmax(86px, .82fr)) 64px 56px;
   }
 }
 </style>
