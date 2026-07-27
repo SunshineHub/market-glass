@@ -12,11 +12,11 @@
   --font-md: clamp(14px, 1.12vw, 16px);
   --font-lg: clamp(20px, 1.7vw, 24px);
   --font-display: clamp(26px, 2.3vw, 33px);
-  --mini-font-micro: 7.5px;
-  --mini-font-xs: 8.5px;
-  --mini-font-sm: 9.5px;
-  --mini-font-md: 11px;
-  --mini-row-height: 49px;
+  --mini-font-micro: 9px;
+  --mini-font-xs: 11px;
+  --mini-font-sm: 12px;
+  --mini-font-md: 14px;
+  --mini-row-height: 58px;
   --profit: #e95d57;
   --profit-soft: rgba(233, 93, 87, 0.12);
   --loss: #15956f;
@@ -64,11 +64,11 @@
   --font-md: clamp(13px, 1.08vw, 15px);
   --font-lg: clamp(19px, 1.65vw, 23px);
   --font-display: clamp(24px, 2.25vw, 31px);
-  --mini-font-micro: 7px;
-  --mini-font-xs: 8px;
-  --mini-font-sm: 9px;
-  --mini-font-md: 10.5px;
-  --mini-row-height: 47px;
+  --mini-font-micro: 8.5px;
+  --mini-font-xs: 10px;
+  --mini-font-sm: 11px;
+  --mini-font-md: 12.5px;
+  --mini-row-height: 54px;
 }
 
 :root[data-font-size="large"] {
@@ -77,11 +77,11 @@
   --font-md: clamp(15px, 1.18vw, 17px);
   --font-lg: clamp(22px, 1.78vw, 26px);
   --font-display: clamp(28px, 2.4vw, 35px);
-  --mini-font-micro: 8px;
-  --mini-font-xs: 9px;
-  --mini-font-sm: 10px;
-  --mini-font-md: 12px;
-  --mini-row-height: 52px;
+  --mini-font-micro: 9.5px;
+  --mini-font-xs: 12px;
+  --mini-font-sm: 13px;
+  --mini-font-md: 15px;
+  --mini-row-height: 62px;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1,7 +1,7 @@
 {
   "name": "market-glass",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.1.8",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "pnpm --filter @market-glass/desktop-ui dev",
