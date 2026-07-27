@@ -436,7 +436,7 @@ header button svg {
 .asset-columns,
 .asset-row {
   display: grid;
-  grid-template-columns: minmax(184px, 1.5fr) minmax(96px, .76fr) repeat(2, minmax(110px, .9fr)) 82px 64px;
+  grid-template-columns: minmax(156px, 22fr) minmax(88px, 14fr) repeat(2, minmax(104px, 17fr)) minmax(88px, 18fr) minmax(66px, 12fr);
   gap: var(--list-column-gap);
 }
 
@@ -510,7 +510,7 @@ header button svg {
 
 .asset-columns.selecting,
 .asset-row.selecting {
-  grid-template-columns: 26px minmax(164px, 1.4fr) minmax(88px, .7fr) repeat(2, minmax(102px, .86fr)) 74px 58px;
+  grid-template-columns: 26px minmax(142px, 22fr) minmax(80px, 14fr) repeat(2, minmax(96px, 17fr)) minmax(80px, 18fr) minmax(62px, 12fr);
 }
 
 .row-check { justify-content: center; cursor: pointer; }
@@ -701,13 +701,13 @@ header button svg {
 @media (max-width: 1060px) {
   .asset-columns,
   .asset-row {
-    grid-template-columns: minmax(148px, 1.34fr) minmax(82px, .68fr) repeat(2, minmax(92px, .86fr)) 68px 60px;
+    grid-template-columns: minmax(148px, 22fr) minmax(82px, 14fr) repeat(2, minmax(98px, 17fr)) minmax(82px, 18fr) minmax(62px, 12fr);
     gap: 7px;
   }
 
   .asset-columns.selecting,
   .asset-row.selecting {
-    grid-template-columns: 24px minmax(136px, 1.25fr) minmax(76px, .64fr) repeat(2, minmax(86px, .82fr)) 64px 56px;
+    grid-template-columns: 24px minmax(132px, 22fr) minmax(76px, 14fr) repeat(2, minmax(90px, 17fr)) minmax(76px, 18fr) minmax(58px, 12fr);
   }
 }
 

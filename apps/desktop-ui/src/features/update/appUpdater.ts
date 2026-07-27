@@ -39,7 +39,7 @@ function toProgress(downloaded: number, total?: number): AppUpdateProgress {
 }
 
 export async function getCurrentAppVersion(): Promise<string> {
-  if (!isTauriRuntime()) return "0.1.6";
+  if (!isTauriRuntime()) return "0.1.7";
   return getVersion();
 }
 
@@ -49,10 +49,10 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo | null> {
     previewUpdate = previewUpdateEnabled();
     return previewUpdate
       ? {
-          currentVersion: "0.1.5",
-          version: "0.1.6",
+          currentVersion: "0.1.6",
+          version: "0.1.7",
           date: new Date().toISOString(),
-          notes: "已确认的基金净值会停止重复刷新，下一交易日恢复。\n资产列表间距改为紧凑的响应式布局。",
+          notes: "重新分配资产表格列宽，减少基金名称列留白。\n加宽来源、更新与操作区，保持紧凑行高。",
         }
       : null;
   }
