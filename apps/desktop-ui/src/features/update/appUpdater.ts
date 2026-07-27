@@ -39,7 +39,7 @@ function toProgress(downloaded: number, total?: number): AppUpdateProgress {
 }
 
 export async function getCurrentAppVersion(): Promise<string> {
-  if (!isTauriRuntime()) return "0.1.8";
+  if (!isTauriRuntime()) return "0.1.9";
   return getVersion();
 }
 
@@ -49,10 +49,10 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo | null> {
     previewUpdate = previewUpdateEnabled();
     return previewUpdate
       ? {
-          currentVersion: "0.1.7",
-          version: "0.1.8",
+          currentVersion: "0.1.8",
+          version: "0.1.9",
           date: new Date().toISOString(),
-          notes: "资产表格后三列改为等宽分布，表格视觉重心更平衡。\n提高 macOS 小窗字号与行高，改善金额和涨跌幅可读性。",
+          notes: "小窗更新时间列已加宽，可完整显示时分。\n收紧单行高度与行间距，统一基金名称、净值和盈亏的垂直对齐。",
         }
       : null;
   }

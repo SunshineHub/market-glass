@@ -190,7 +190,7 @@ onBeforeUnmount(() => store.dispose());
 }
 
 .mini-glass {
-  --mini-fund-grid: minmax(0, 1fr) 52px 74px 74px 36px;
+  --mini-fund-grid: minmax(0, 1fr) 50px 72px 72px 46px;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -393,7 +393,7 @@ header {
 .fund-row {
   display: grid;
   grid-template-columns: var(--mini-fund-grid);
-  gap: 6px;
+  gap: 5px;
   align-items: center;
 }
 
@@ -510,9 +510,9 @@ header {
 .fund-scroll {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-height: 0;
-  padding: 3px 4px 6px;
+  padding: 2px 4px 4px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-color: color-mix(in srgb, var(--text-muted) 22%, transparent) transparent;
@@ -521,7 +521,7 @@ header {
 
 .fund-row {
   min-height: var(--mini-row-height);
-  padding: 6px;
+  padding: 4px 6px;
   border-radius: 10px;
   transition: background-color 150ms ease, box-shadow 170ms ease;
 }
@@ -541,27 +541,32 @@ header {
 }
 
 .fund-row time {
+  font-size: var(--mini-font-xs);
   color: var(--text-muted);
 }
 
 .fund-identity {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   min-width: 0;
+  min-height: 30px;
 }
 
 .fund-identity strong {
   overflow: hidden;
   font-size: var(--mini-font-sm);
   font-weight: 660;
+  line-height: 1.15;
   color: var(--text-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fund-identity small {
-  margin-top: 3px;
+  margin-top: 2px;
   font-size: var(--mini-font-micro);
+  line-height: 1.15;
   color: var(--text-muted);
   letter-spacing: .04em;
 }
@@ -569,9 +574,11 @@ header {
 .fund-metric {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   align-items: flex-end;
+  justify-content: center;
   min-width: 0;
+  min-height: 30px;
 }
 
 .fund-metric strong {
@@ -579,6 +586,7 @@ header {
   max-width: 100%;
   font-size: var(--mini-font-xs);
   font-weight: 710;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -586,6 +594,7 @@ header {
 .fund-metric small {
   font-size: var(--mini-font-xs);
   font-weight: 680;
+  line-height: 1.15;
 }
 
 .fund-metric.unknown {

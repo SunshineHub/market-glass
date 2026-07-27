@@ -1959,7 +1959,7 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "market-glass-application"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1973,7 +1973,7 @@ dependencies = [
 
 [[package]]
 name = "market-glass-desktop"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "market-glass-application",
  "market-glass-infrastructure",
@@ -1989,7 +1989,7 @@ dependencies = [
 
 [[package]]
 name = "market-glass-domain"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "chrono",
  "rust_decimal",
@@ -1999,7 +1999,7 @@ dependencies = [
 
 [[package]]
 name = "market-glass-infrastructure"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "async-trait",
  "market-glass-application",
@@ -2012,7 +2012,7 @@ dependencies = [
 
 [[package]]
 name = "market-glass-providers"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "async-trait",
  "chrono",
