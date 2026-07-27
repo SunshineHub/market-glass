@@ -302,11 +302,14 @@ function sourceLabel(provider: string) {
 
 <style scoped>
 .asset-list {
+  --list-column-gap: clamp(6px, 0.72vw, 10px);
+  --list-row-padding-x: clamp(8px, 0.82vw, 12px);
+  --list-row-padding-y: clamp(7px, 0.58vw, 9px);
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  padding: 17px 18px 8px;
+  padding: clamp(12px, 1.12vw, 16px) clamp(11px, 1.22vw, 17px) 7px;
   background: var(--glass-subtle);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
@@ -322,7 +325,7 @@ header,
 
 header {
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: clamp(7px, 0.72vw, 10px);
 }
 
 .list-actions {
@@ -421,10 +424,10 @@ header button svg {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-height: 0;
   min-width: 0;
-  padding-top: 3px;
+  padding-top: 2px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -434,13 +437,13 @@ header button svg {
 .asset-row {
   display: grid;
   grid-template-columns: minmax(184px, 1.5fr) minmax(96px, .76fr) repeat(2, minmax(110px, .9fr)) 82px 64px;
-  gap: 10px;
+  gap: var(--list-column-gap);
 }
 
 .asset-columns {
   align-items: center;
-  min-height: 34px;
-  padding: 7px 12px;
+  min-height: 30px;
+  padding: 5px var(--list-row-padding-x);
   overflow: hidden;
   font-size: var(--font-xs);
   font-weight: 620;
@@ -499,8 +502,9 @@ header button svg {
 .column-sort.ascending i { transform: rotate(0); }
 
 .asset-row {
-  padding: 12px;
-  border-radius: 12px;
+  padding: var(--list-row-padding-y) var(--list-row-padding-x);
+  line-height: 1.22;
+  border-radius: 10px;
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -545,7 +549,7 @@ header button svg {
 .asset-identity span,
 .asset-source span,
 .asset-source small {
-  margin-top: 4px;
+  margin-top: 2px;
   overflow: hidden;
   font-size: var(--font-xs);
   color: var(--text-muted);
@@ -555,14 +559,14 @@ header button svg {
 
 .asset-metric > div {
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
   align-items: flex-end;
   margin-top: 0;
   font-size: var(--font-sm);
 }
 
 .asset-metric > .unknown-cost {
-  gap: 3px;
+  gap: 1px;
   color: var(--text-muted);
 }
 
@@ -585,7 +589,7 @@ header button svg {
 .asset-source {
   align-items: flex-end;
   justify-content: center;
-  gap: 5px;
+  gap: 2px;
 }
 
 .asset-source > span {
@@ -593,7 +597,7 @@ header button svg {
   gap: 4px;
   align-items: center;
   max-width: 100%;
-  padding: 4px 6px;
+  padding: 2px 5px;
   margin: 0;
   color: var(--text);
   background: var(--glass-subtle);
@@ -704,6 +708,14 @@ header button svg {
   .asset-columns.selecting,
   .asset-row.selecting {
     grid-template-columns: 24px minmax(136px, 1.25fr) minmax(76px, .64fr) repeat(2, minmax(86px, .82fr)) 64px 56px;
+  }
+}
+
+@media (min-width: 1320px) {
+  .asset-list {
+    --list-column-gap: 10px;
+    --list-row-padding-x: 12px;
+    --list-row-padding-y: 9px;
   }
 }
 </style>

@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Timelike, Utc, Weekday};
 use market_glass_domain::{AssetKind, FundQuote, Position, calculate_asset};
 use rust_decimal::{Decimal, prelude::ToPrimitive};
 use serde::{Deserialize, Serialize};
@@ -290,6 +290,7 @@ impl OverviewService {
         let _refresh_guard = self.refresh_gate.lock().await;
         let positions = self.visible_positions().await?;
         let fund_codes = fund_codes(&positions);
+        let fund_codes_to_refresh = self.fund_codes_to_refresh(&fund_codes, Utc::now());
         let market_codes = self
             .market_indices
             .iter()
@@ -297,7 +298,7 @@ impl OverviewService {
             .collect::<Vec<_>>();
         let (indices_result, fund_result) = tokio::join!(
             self.market.fetch_indices(&market_codes),
-            self.market.fetch_funds(&fund_codes),
+            self.market.fetch_funds(&fund_codes_to_refresh),
         );
 
         let degraded = indices_result.is_err() || fund_result.is_err();
@@ -375,6 +376,23 @@ impl OverviewService {
             .filter_map(|code| cache.funds.get(code).cloned())
             .collect::<Vec<_>>();
         (indices, funds)
+    }
+
+    fn fund_codes_to_refresh(&self, fund_codes: &[String], now: DateTime<Utc>) -> Vec<String> {
+        let cache = self
+            .market_cache
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        fund_codes
+            .iter()
+            .filter(|code| {
+                cache
+                    .funds
+                    .get(code.as_str())
+                    .is_none_or(|quote| !confirmed_quote_is_locked(quote, now))
+            })
+            .cloned()
+            .collect()
     }
 
     fn snapshot_from_quotes(
@@ -721,6 +739,28 @@ impl OverviewService {
         self.repository.delete_positions(&ids).await?;
         self.cached_overview().await
     }
+}
+
+fn confirmed_quote_is_locked(quote: &FundQuote, now: DateTime<Utc>) -> bool {
+    if quote.nature != market_glass_domain::DataNature::Confirmed {
+        return false;
+    }
+
+    let china = FixedOffset::east_opt(8 * 60 * 60).expect("valid China time offset");
+    let source_date = quote.source_time.with_timezone(&china).date_naive();
+    let now = now.with_timezone(&china);
+    let next_session = next_weekday(source_date);
+
+    now.date_naive() < next_session
+        || (now.date_naive() == next_session && (now.hour(), now.minute()) < (9, 15))
+}
+
+fn next_weekday(date: NaiveDate) -> NaiveDate {
+    let mut candidate = date.succ_opt().expect("date must have a successor");
+    while matches!(candidate.weekday(), Weekday::Sat | Weekday::Sun) {
+        candidate = candidate.succ_opt().expect("date must have a successor");
+    }
+    candidate
 }
 
 fn fund_codes(positions: &[Position]) -> Vec<String> {
@@ -1196,6 +1236,80 @@ mod tests {
         assert_eq!(
             first_lot.total_cost + second_lot.total_cost,
             Decimal::new(19876, 2)
+        );
+    }
+
+    fn quote_with_nature(source_time: &str, nature: market_glass_domain::DataNature) -> FundQuote {
+        FundQuote {
+            code: "005827".into(),
+            name: "测试基金".into(),
+            current_nav: Decimal::ONE,
+            previous_nav: Decimal::ONE,
+            change_percent: Decimal::ZERO,
+            nature,
+            freshness: market_glass_domain::Freshness::Fresh,
+            provider: "test".into(),
+            source_time: DateTime::parse_from_rfc3339(source_time).unwrap().to_utc(),
+        }
+    }
+
+    #[test]
+    fn locks_a_confirmed_quote_until_the_next_session_starts() {
+        let quote = quote_with_nature(
+            "2026-07-24T15:00:00+08:00",
+            market_glass_domain::DataNature::Confirmed,
+        );
+        let weekend = DateTime::parse_from_rfc3339("2026-07-25T12:00:00+08:00")
+            .unwrap()
+            .to_utc();
+        let before_open = DateTime::parse_from_rfc3339("2026-07-27T09:14:00+08:00")
+            .unwrap()
+            .to_utc();
+        let session_started = DateTime::parse_from_rfc3339("2026-07-27T09:15:00+08:00")
+            .unwrap()
+            .to_utc();
+
+        assert!(confirmed_quote_is_locked(&quote, weekend));
+        assert!(confirmed_quote_is_locked(&quote, before_open));
+        assert!(!confirmed_quote_is_locked(&quote, session_started));
+    }
+
+    #[test]
+    fn never_locks_an_estimated_quote() {
+        let quote = quote_with_nature(
+            "2026-07-24T15:00:00+08:00",
+            market_glass_domain::DataNature::Estimated,
+        );
+        let weekend = DateTime::parse_from_rfc3339("2026-07-25T12:00:00+08:00")
+            .unwrap()
+            .to_utc();
+
+        assert!(!confirmed_quote_is_locked(&quote, weekend));
+    }
+
+    #[test]
+    fn refresh_plan_omits_locked_funds_but_keeps_uncached_funds() {
+        let service = OverviewService::new(
+            Arc::new(TestRepository::default()),
+            Arc::new(TestMarket::default()),
+        );
+        let quote = quote_with_nature(
+            "2026-07-24T15:00:00+08:00",
+            market_glass_domain::DataNature::Confirmed,
+        );
+        service
+            .market_cache
+            .write()
+            .unwrap()
+            .funds
+            .insert(quote.code.clone(), quote);
+        let now = DateTime::parse_from_rfc3339("2026-07-25T12:00:00+08:00")
+            .unwrap()
+            .to_utc();
+
+        assert_eq!(
+            service.fund_codes_to_refresh(&["005827".into(), "110022".into()], now),
+            vec!["110022"]
         );
     }
 

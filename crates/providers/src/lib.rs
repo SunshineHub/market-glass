@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use async_trait::async_trait;
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use futures::future::join_all;
 use market_glass_application::{FundMetadata, IndexMarketQuote, MarketDataProvider, ProviderError};
 use market_glass_domain::{DataNature, Freshness, FundQuote};
@@ -358,7 +358,14 @@ impl MarketDataProvider for HybridMarketDataProvider {
                     sina_by_code.get(code.as_str()),
                     official_by_code.get(code.as_str()),
                 ) {
-                    (Some(estimate), Some(official)) => !estimate_is_current(estimate, official),
+                    (_, Some(official))
+                        if official.nav_date.is_some_and(|date| date >= china_today()) =>
+                    {
+                        false
+                    }
+                    (Some(estimate), Some(official)) => {
+                        !estimate_supersedes_official(estimate, official)
+                    }
                     _ => true,
                 }
             })
@@ -381,7 +388,7 @@ impl MarketDataProvider for HybridMarketDataProvider {
                 let fund = official_by_code.get(code)?;
                 if let Some(estimate) = sina_by_code
                     .get(code)
-                    .filter(|estimate| estimate_is_current(estimate, fund))
+                    .filter(|estimate| estimate_supersedes_official(estimate, fund))
                 {
                     let divisor = Decimal::ONE + estimate.change_percent / Decimal::new(100, 0);
                     let previous_nav = if divisor.is_zero() {
@@ -396,7 +403,7 @@ impl MarketDataProvider for HybridMarketDataProvider {
                         previous_nav,
                         change_percent: estimate.change_percent,
                         nature: DataNature::Estimated,
-                        freshness: if estimate.estimate_date == Some(Local::now().date_naive()) {
+                        freshness: if estimate.estimate_date == Some(china_today()) {
                             Freshness::Fresh
                         } else {
                             Freshness::Delayed
@@ -446,11 +453,17 @@ impl MarketDataProvider for HybridMarketDataProvider {
     }
 }
 
-fn estimate_is_current(estimate: &SinaEstimate, official: &OfficialFund) -> bool {
+fn estimate_supersedes_official(estimate: &SinaEstimate, official: &OfficialFund) -> bool {
     match (estimate.estimate_date, official.nav_date) {
-        (Some(estimate_date), Some(nav_date)) => estimate_date >= nav_date,
-        _ => true,
+        (Some(estimate_date), Some(nav_date)) => estimate_date > nav_date,
+        (Some(_), None) | (None, None) => true,
+        (None, Some(_)) => false,
     }
+}
+
+fn china_today() -> NaiveDate {
+    let china = FixedOffset::east_opt(8 * 60 * 60).expect("valid China time offset");
+    Utc::now().with_timezone(&china).date_naive()
 }
 
 fn index_mapping(secid: &str) -> Option<(&'static str, &'static str, &'static str)> {
@@ -549,7 +562,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_estimate_older_than_confirmed_nav() {
+    fn confirmed_nav_wins_when_estimate_is_older() {
         let estimate = SinaEstimate {
             code: "001618".into(),
             estimated_nav: Decimal::ONE,
@@ -565,7 +578,28 @@ mod tests {
             nav_date: parse_date("2026-07-21"),
             source_time: Utc::now(),
         };
-        assert!(!estimate_is_current(&estimate, &official));
+        assert!(!estimate_supersedes_official(&estimate, &official));
+    }
+
+    #[test]
+    fn confirmed_nav_wins_when_dates_match() {
+        let date = parse_date("2026-07-21");
+        let estimate = SinaEstimate {
+            code: "001618".into(),
+            estimated_nav: Decimal::ONE,
+            change_percent: Decimal::ZERO,
+            estimate_date: date,
+            source_time: Utc::now(),
+        };
+        let official = OfficialFund {
+            code: "001618".into(),
+            name: "test".into(),
+            nav: Decimal::ONE,
+            nav_change_percent: Decimal::ZERO,
+            nav_date: date,
+            source_time: Utc::now(),
+        };
+        assert!(!estimate_supersedes_official(&estimate, &official));
     }
 
     #[test]
