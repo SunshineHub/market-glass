@@ -39,7 +39,7 @@ function toProgress(downloaded: number, total?: number): AppUpdateProgress {
 }
 
 export async function getCurrentAppVersion(): Promise<string> {
-  if (!isTauriRuntime()) return "0.1.9";
+  if (!isTauriRuntime()) return "0.1.10";
   return getVersion();
 }
 
@@ -49,10 +49,10 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo | null> {
     previewUpdate = previewUpdateEnabled();
     return previewUpdate
       ? {
-          currentVersion: "0.1.8",
-          version: "0.1.9",
+          currentVersion: "0.1.9",
+          version: "0.1.10",
           date: new Date().toISOString(),
-          notes: "小窗更新时间列已加宽，可完整显示时分。\n收紧单行高度与行间距，统一基金名称、净值和盈亏的垂直对齐。",
+          notes: "自动更新改用 GitHub Release 公开下载直链。\n避免匿名 API 请求额度耗尽后出现 403 下载失败。",
         }
       : null;
   }

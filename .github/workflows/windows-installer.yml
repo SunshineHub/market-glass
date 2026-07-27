@@ -105,16 +105,39 @@ jobs:
           APP_VERSION="$(node -p 'require("./src-tauri/tauri.conf.json").version')"
           echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
 
-      - name: Download updater manifest
+      - name: Download updater manifest and release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "v${APP_VERSION}" --repo "${{ github.repository }}" --pattern latest.json --dir updater-manifest
+        run: |
+          gh release download "v${APP_VERSION}" --repo "${{ github.repository }}" --pattern latest.json --dir updater-manifest
+          gh release view "v${APP_VERSION}" --repo "${{ github.repository }}" --json assets > updater-manifest/assets.json
+
+      - name: Rewrite updater downloads to public release URLs
+        run: |
+          node --test scripts/rewrite-updater-manifest.test.mjs
+          node scripts/rewrite-updater-manifest.mjs \
+            updater-manifest/latest.json \
+            updater-manifest/assets.json \
+            "${{ github.repository }}" \
+            "v${APP_VERSION}"
 
       - name: Validate updater platforms
         run: |
-          node -e "const m=require('./updater-manifest/latest.json'); for (const p of ['darwin-aarch64','windows-x86_64']) { if (!m.platforms?.[p]?.url || !m.platforms?.[p]?.signature) throw new Error('Missing updater platform: '+p) }"
+          node -e "const m=require('./updater-manifest/latest.json'); for (const p of ['darwin-aarch64','windows-x86_64']) { const e=m.platforms?.[p]; if (!e?.url || !e?.signature) throw new Error('Missing updater platform: '+p); if (new URL(e.url).hostname !== 'github.com') throw new Error('Updater URL is not public: '+p) }"
+
+      - name: Replace updater manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${APP_VERSION}" updater-manifest/latest.json --repo "${{ github.repository }}" --clobber
 
       - name: Publish verified release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "v${APP_VERSION}" --repo "${{ github.repository }}" --draft=false
+
+      - name: Verify public updater downloads
+        run: |
+          curl --fail --location --retry 5 --retry-all-errors --head \
+            "https://github.com/${{ github.repository }}/releases/download/v${APP_VERSION}/latest.json"
+          node -e "const m=require('./updater-manifest/latest.json'); for (const p of ['darwin-aarch64','windows-x86_64']) console.log(m.platforms[p].url)" \
+            | xargs -n 1 curl --fail --location --retry 5 --retry-all-errors --head
