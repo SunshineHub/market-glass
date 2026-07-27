@@ -41,6 +41,7 @@ const selectionMode = ref(false);
 const selectedIds = ref<string[]>([]);
 const confirmAction = ref<"single" | "selected" | "all">();
 const singleDeleteId = ref<string>();
+const deleteRequested = ref(false);
 const displayedAssets = computed(() => {
   if (sortMode.value === "default") return props.assets;
   const direction = sortMode.value === "day-desc" ? -1 : 1;
@@ -73,6 +74,14 @@ watch(
   },
 );
 
+watch(
+  () => props.deleting,
+  (deleting, wasDeleting) => {
+    if (deleteRequested.value && wasDeleting && !deleting) closeDeleteConfirmation();
+  },
+  { flush: "sync" },
+);
+
 function toggleSelectionMode() {
   selectionMode.value = !selectionMode.value;
   if (!selectionMode.value) selectedIds.value = [];
@@ -93,11 +102,18 @@ function toggleAll(checked: boolean) {
 }
 
 function confirmDelete() {
+  if (props.deleting || deleteRequested.value) return;
   const ids = [...pendingDeleteIds.value];
   if (!ids.length) return;
+  deleteRequested.value = true;
   emit("remove", ids);
+}
+
+function closeDeleteConfirmation() {
+  if (props.deleting) return;
   confirmAction.value = undefined;
   singleDeleteId.value = undefined;
+  deleteRequested.value = false;
   selectedIds.value = [];
 }
 
@@ -279,7 +295,7 @@ function sourceLabel(provider: string) {
         : '所选资产的份额、投入成本与本地持仓信息会一并永久删除，此操作无法撤销。'"
     :confirm-label="confirmAction === 'all' ? '确认清空' : '确认删除'"
     :busy="deleting"
-    @close="confirmAction = undefined; singleDeleteId = undefined"
+    @close="closeDeleteConfirmation"
     @confirm="confirmDelete"
   />
 </template>

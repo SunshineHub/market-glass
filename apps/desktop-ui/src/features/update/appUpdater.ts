@@ -39,7 +39,7 @@ function toProgress(downloaded: number, total?: number): AppUpdateProgress {
 }
 
 export async function getCurrentAppVersion(): Promise<string> {
-  if (!isTauriRuntime()) return "0.1.3";
+  if (!isTauriRuntime()) return "0.1.5";
   return getVersion();
 }
 
@@ -49,10 +49,10 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo | null> {
     previewUpdate = previewUpdateEnabled();
     return previewUpdate
       ? {
-          currentVersion: "0.1.2",
-          version: "0.1.3",
+          currentVersion: "0.1.4",
+          version: "0.1.5",
           date: new Date().toISOString(),
-          notes: "新增应用内自动更新、签名校验和下载进度展示。\n优化跨平台安装与重启流程。",
+          notes: "保存与删除改为本地即时完成，行情在后台刷新。\n慢操作新增延迟出现的轻量 Loading。",
         }
       : null;
   }

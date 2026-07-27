@@ -1,4 +1,8 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -208,6 +212,14 @@ pub struct OverviewService {
     repository: Arc<dyn PortfolioRepository>,
     market: Arc<dyn MarketDataProvider>,
     market_indices: Vec<MarketIndexDefinition>,
+    market_cache: RwLock<MarketQuoteCache>,
+    refresh_gate: tokio::sync::Mutex<()>,
+}
+
+#[derive(Default)]
+struct MarketQuoteCache {
+    indices: HashMap<String, IndexMarketQuote>,
+    funds: HashMap<String, FundQuote>,
 }
 
 #[derive(Debug, Clone)]
@@ -227,6 +239,8 @@ impl OverviewService {
             repository,
             market,
             market_indices: market_index_definitions(),
+            market_cache: RwLock::new(MarketQuoteCache::default()),
+            refresh_gate: tokio::sync::Mutex::new(()),
         }
     }
 
@@ -273,6 +287,52 @@ impl OverviewService {
     }
 
     pub async fn overview(&self) -> Result<(OverviewSnapshotDto, bool), ApplicationError> {
+        let _refresh_guard = self.refresh_gate.lock().await;
+        let positions = self.visible_positions().await?;
+        let fund_codes = fund_codes(&positions);
+        let market_codes = self
+            .market_indices
+            .iter()
+            .map(|index| index.secid.to_owned())
+            .collect::<Vec<_>>();
+        let (indices_result, fund_result) = tokio::join!(
+            self.market.fetch_indices(&market_codes),
+            self.market.fetch_funds(&fund_codes),
+        );
+
+        let degraded = indices_result.is_err() || fund_result.is_err();
+        {
+            let mut cache = self
+                .market_cache
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if let Ok(indices) = indices_result {
+                for quote in indices {
+                    cache.indices.insert(quote.code.clone(), quote);
+                }
+            }
+            if let Ok(funds) = fund_result {
+                for quote in funds {
+                    cache.funds.insert(quote.code.clone(), quote);
+                }
+            }
+        }
+
+        let (indices, fund_quotes) = self.cached_market_quotes(&fund_codes);
+        Ok((
+            self.snapshot_from_quotes(positions, indices, fund_quotes),
+            degraded,
+        ))
+    }
+
+    pub async fn cached_overview(&self) -> Result<OverviewSnapshotDto, ApplicationError> {
+        let positions = self.visible_positions().await?;
+        let fund_codes = fund_codes(&positions);
+        let (indices, fund_quotes) = self.cached_market_quotes(&fund_codes);
+        Ok(self.snapshot_from_quotes(positions, indices, fund_quotes))
+    }
+
+    async fn visible_positions(&self) -> Result<Vec<Position>, ApplicationError> {
         // Advisory platforms do not expose a stable, authorized constituent feed.
         // Keep legacy rows in local storage for compatibility, but do not present
         // partial manual totals as a supported portfolio feature.
@@ -294,25 +354,35 @@ impl OverviewService {
                 !(position.provider == "插件配置导入" && position.strategy == "历史持仓")
             });
         }
-        let fund_codes = positions
-            .iter()
-            .filter(|position| position.kind == AssetKind::Fund)
-            .filter_map(|position| position.code.clone())
-            .collect::<Vec<_>>();
+        Ok(positions)
+    }
 
-        let market_codes = self
+    fn cached_market_quotes(
+        &self,
+        fund_codes: &[String],
+    ) -> (Vec<IndexMarketQuote>, Vec<FundQuote>) {
+        let cache = self
+            .market_cache
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let indices = self
             .market_indices
             .iter()
-            .map(|index| index.secid.to_owned())
+            .filter_map(|index| cache.indices.get(index.code).cloned())
             .collect::<Vec<_>>();
-        let (indices_result, fund_result) = tokio::join!(
-            self.market.fetch_indices(&market_codes),
-            self.market.fetch_funds(&fund_codes),
-        );
+        let funds = fund_codes
+            .iter()
+            .filter_map(|code| cache.funds.get(code).cloned())
+            .collect::<Vec<_>>();
+        (indices, funds)
+    }
 
-        let degraded = indices_result.is_err() || fund_result.is_err();
-        let indices = indices_result.unwrap_or_default();
-        let fund_quotes = fund_result.unwrap_or_default();
+    fn snapshot_from_quotes(
+        &self,
+        positions: Vec<Position>,
+        indices: Vec<IndexMarketQuote>,
+        fund_quotes: Vec<FundQuote>,
+    ) -> OverviewSnapshotDto {
         let quote_map = fund_quotes
             .iter()
             .map(|quote| (quote.code.as_str(), quote))
@@ -380,38 +450,35 @@ impl OverviewService {
 
         let allocation = allocation(&performances);
         let calculated_at = Utc::now().to_rfc3339();
-        Ok((
-            OverviewSnapshotDto {
-                total_assets: decimal_to_f64(total_assets),
-                day_profit: decimal_to_f64(day_profit),
-                day_profit_percent: decimal_to_f64(day_profit_percent),
-                total_profit: decimal_to_f64(total_profit),
-                total_profit_percent: decimal_to_f64(total_profit_percent),
-                indices: indices
-                    .into_iter()
-                    .map(|quote| IndexQuoteDto {
-                        name: self
-                            .market_indices
-                            .iter()
-                            .find(|item| item.code == quote.code)
-                            .map(|item| item.name.to_owned())
-                            .unwrap_or(quote.name),
-                        code: quote.code,
-                        value: quote.value,
-                        change: quote.change,
-                        change_percent: quote.change_percent,
-                        sparkline: vec![quote.value - quote.change, quote.value],
-                        freshness: "fresh",
-                        updated_at: quote.source_time.to_rfc3339(),
-                    })
-                    .collect(),
-                assets,
-                allocation,
-                asset_trend: Vec::new(),
-                calculated_at,
-            },
-            degraded,
-        ))
+        OverviewSnapshotDto {
+            total_assets: decimal_to_f64(total_assets),
+            day_profit: decimal_to_f64(day_profit),
+            day_profit_percent: decimal_to_f64(day_profit_percent),
+            total_profit: decimal_to_f64(total_profit),
+            total_profit_percent: decimal_to_f64(total_profit_percent),
+            indices: indices
+                .into_iter()
+                .map(|quote| IndexQuoteDto {
+                    name: self
+                        .market_indices
+                        .iter()
+                        .find(|item| item.code == quote.code)
+                        .map(|item| item.name.to_owned())
+                        .unwrap_or(quote.name),
+                    code: quote.code,
+                    value: quote.value,
+                    change: quote.change,
+                    change_percent: quote.change_percent,
+                    sparkline: vec![quote.value - quote.change, quote.value],
+                    freshness: "fresh",
+                    updated_at: quote.source_time.to_rfc3339(),
+                })
+                .collect(),
+            assets,
+            allocation,
+            asset_trend: Vec::new(),
+            calculated_at,
+        }
     }
 
     pub async fn set_privacy_mode(&self, enabled: bool) -> Result<(), ApplicationError> {
@@ -547,7 +614,7 @@ impl OverviewService {
         } else {
             self.repository.add_position(&position).await?;
         }
-        self.overview().await.map(|result| result.0)
+        self.cached_overview().await
     }
 
     pub async fn import_positions(
@@ -569,7 +636,7 @@ impl OverviewService {
             .map(parse_position)
             .collect::<Result<Vec<_>, _>>()?;
         self.repository.add_positions(&positions).await?;
-        self.overview().await.map(|result| result.0)
+        self.cached_overview().await
     }
 
     pub async fn update_positions_partial(
@@ -622,7 +689,7 @@ impl OverviewService {
             }
         }
 
-        let snapshot = self.overview().await?.0;
+        let snapshot = self.cached_overview().await?;
         Ok(PositionBatchUpdateResultDto {
             snapshot,
             succeeded_ids,
@@ -652,8 +719,16 @@ impl OverviewService {
             })
             .collect::<Result<Vec<_>, _>>()?;
         self.repository.delete_positions(&ids).await?;
-        self.overview().await.map(|result| result.0)
+        self.cached_overview().await
     }
+}
+
+fn fund_codes(positions: &[Position]) -> Vec<String> {
+    positions
+        .iter()
+        .filter(|position| position.kind == AssetKind::Fund)
+        .filter_map(|position| position.code.clone())
+        .collect()
 }
 
 fn parse_position(input: PositionInputDto) -> Result<Position, ApplicationError> {
@@ -1004,7 +1079,10 @@ fn freshness(value: market_glass_domain::Freshness) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
+    use std::sync::{
+        Mutex,
+        atomic::{AtomicUsize, Ordering},
+    };
 
     use super::*;
 
@@ -1035,8 +1113,12 @@ mod tests {
         async fn add_positions(&self, _: &[Position]) -> Result<(), RepositoryError> {
             unimplemented!()
         }
-        async fn delete_positions(&self, _: &[Uuid]) -> Result<(), RepositoryError> {
-            unimplemented!()
+        async fn delete_positions(&self, ids: &[Uuid]) -> Result<(), RepositoryError> {
+            self.positions
+                .lock()
+                .unwrap()
+                .retain(|position| !ids.contains(&position.id));
+            Ok(())
         }
         async fn upsert_positions(&self, _: &[Position]) -> Result<(), RepositoryError> {
             unimplemented!()
@@ -1055,7 +1137,10 @@ mod tests {
         }
     }
 
-    struct TestMarket;
+    #[derive(Default)]
+    struct TestMarket {
+        fetch_count: AtomicUsize,
+    }
 
     #[async_trait]
     impl MarketDataProvider for TestMarket {
@@ -1063,10 +1148,12 @@ mod tests {
             &self,
             _: &[String],
         ) -> Result<Vec<IndexMarketQuote>, ProviderError> {
+            self.fetch_count.fetch_add(1, Ordering::SeqCst);
             Ok(Vec::new())
         }
 
         async fn fetch_funds(&self, _: &[String]) -> Result<Vec<FundQuote>, ProviderError> {
+            self.fetch_count.fetch_add(1, Ordering::SeqCst);
             Ok(Vec::new())
         }
 
@@ -1115,7 +1202,8 @@ mod tests {
     #[tokio::test]
     async fn partial_batch_update_keeps_valid_items_when_another_is_invalid() {
         let repository = Arc::new(TestRepository::default());
-        let service = OverviewService::new(repository.clone(), Arc::new(TestMarket));
+        let market = Arc::new(TestMarket::default());
+        let service = OverviewService::new(repository.clone(), market.clone());
         let valid_id = Uuid::new_v4();
         let invalid_id = Uuid::new_v4();
 
@@ -1133,5 +1221,27 @@ mod tests {
         let saved = repository.list_positions().await.unwrap();
         assert_eq!(saved.len(), 1);
         assert_eq!(saved[0].id, valid_id);
+        assert_eq!(market.fetch_count.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn delete_returns_from_local_cache_without_market_requests() {
+        let repository = Arc::new(TestRepository::default());
+        let market = Arc::new(TestMarket::default());
+        let service = OverviewService::new(repository.clone(), market.clone());
+        let id = Uuid::new_v4();
+        repository
+            .upsert_position(&parse_position(fund_input(id, "待删除基金")).unwrap())
+            .await
+            .unwrap();
+
+        let snapshot = service
+            .delete_positions(vec![id.to_string()])
+            .await
+            .unwrap();
+
+        assert!(snapshot.assets.is_empty());
+        assert!(repository.list_positions().await.unwrap().is_empty());
+        assert_eq!(market.fetch_count.load(Ordering::SeqCst), 0);
     }
 }

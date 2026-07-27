@@ -5,6 +5,7 @@ import type {
   PositionInput,
   PositionUpdateFailure,
 } from "@/types/contracts";
+import { useDelayedBusy } from "@/features/ui/useDelayedBusy";
 
 const props = withDefaults(defineProps<{
   assets: AssetSummary[];
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<{
   failures: () => [],
   successCount: 0,
 });
+const savingVisible = useDelayedBusy(() => props.saving);
 
 const emit = defineEmits<{
   close: [];
@@ -153,7 +155,8 @@ function submit() {
         <span class="local-note"><i />修改仅保存在本机</span>
         <button class="secondary" type="button" @click="$emit('close')">取消</button>
         <button class="primary" type="button" :disabled="saving || !rows.length" @click="submit">
-          {{ saving ? "逐项保存中…" : `保存 ${rows.length} 项修改` }}
+          <i v-if="savingVisible" class="button-spinner" />
+          <span>{{ savingVisible ? "正在逐项保存" : `保存 ${rows.length} 项修改` }}</span>
         </button>
       </footer>
     </section>
@@ -274,7 +277,9 @@ input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); 
 
 footer { gap: 8px; align-items: center; justify-content: flex-end; padding-top: 15px; margin-top: 10px; border-top: 1px solid var(--hairline); }
 footer button { padding: 9px 14px; font-size: var(--font-sm); border-radius: 10px; }
-footer .primary { min-width: 112px; color: white; background: var(--accent); border-color: transparent; }
+footer .primary { display: inline-flex; gap: 7px; align-items: center; justify-content: center; min-width: 112px; color: white; background: var(--accent); border-color: transparent; }
+.button-spinner { width: 13px; height: 13px; border: 1.5px solid rgba(255, 255, 255, .34); border-top-color: white; border-radius: 50%; animation: button-spin 680ms linear infinite; }
+@keyframes button-spin { to { transform: rotate(360deg); } }
 .local-note { gap: 7px; align-items: center; margin-right: auto; font-size: var(--font-xs); color: var(--text-muted); }
 .local-note i { color: var(--loss); }
 

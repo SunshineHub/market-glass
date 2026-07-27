@@ -6,8 +6,10 @@ import {
   type FundImportDraft,
 } from "@/features/import/fundConfig";
 import type { AssetSummary, FundMetadata, PositionInput } from "@/types/contracts";
+import { useDelayedBusy } from "@/features/ui/useDelayedBusy";
 
 const props = withDefaults(defineProps<{ saving?: boolean; asset?: AssetSummary }>(), { saving: false });
+const savingVisible = useDelayedBusy(() => props.saving);
 const emit = defineEmits<{
   close: [];
   save: [input: PositionInput];
@@ -352,8 +354,14 @@ onBeforeUnmount(resetLookup);
       <footer>
         <span v-if="mode !== 'single'" class="privacy-note"><i />配置仅在本机处理</span>
         <button class="secondary" type="button" @click="$emit('close')">取消</button>
-        <button v-if="mode === 'single'" class="primary" type="button" :disabled="props.saving" @click="submitSingle">{{ props.saving ? '保存中…' : editing ? '保存修改' : '保存资产' }}</button>
-        <button v-else class="primary" type="button" :disabled="!canImport" @click="submitImport">{{ props.saving ? '导入中…' : `导入 ${selectedDrafts.length} 项` }}</button>
+        <button v-if="mode === 'single'" class="primary" type="button" :disabled="props.saving" @click="submitSingle">
+          <i v-if="savingVisible" class="button-spinner" />
+          <span>{{ savingVisible ? '正在保存' : editing ? '保存修改' : '保存资产' }}</span>
+        </button>
+        <button v-else class="primary" type="button" :disabled="!canImport" @click="submitImport">
+          <i v-if="savingVisible" class="button-spinner" />
+          <span>{{ savingVisible ? '正在导入' : `导入 ${selectedDrafts.length} 项` }}</span>
+        </button>
       </footer>
     </section>
   </div>
@@ -419,6 +427,8 @@ input[readonly] { color: var(--text); cursor: default; background: color-mix(in 
 .identity-fields { display: grid; grid-template-columns: 72px 1fr; gap: 6px; }.strategy-field { min-width: 0; }.strategy-field small { display: block; margin-top: 3px; overflow: hidden; font-size: var(--font-xs); color: var(--warning); text-overflow: ellipsis; white-space: nowrap; }
 .check { display: grid; width: 18px; height: 18px; cursor: pointer; place-items: center; }.check input { position: absolute; opacity: 0; }.check i { display: block; width: 15px; height: 15px; border: 1px solid var(--hairline-strong); border-radius: 5px; }.check input:checked + i { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--glass-strong); }
 .remove-row { display: grid; width: 28px; height: 28px; padding: 0; background: transparent; border-color: transparent; border-radius: 8px; place-items: center; }.remove-row:hover { background: var(--glass-subtle); }
-footer { flex: none; gap: 8px; align-items: center; justify-content: flex-end; padding-top: 16px; margin-top: auto; border-top: 1px solid var(--hairline); }footer button { padding: 9px 14px; font-size: var(--font-sm); border-radius: 10px; }footer .primary { min-width: 100px; color: white; background: var(--accent); border-color: transparent; }.privacy-note { display: flex; gap: 7px; align-items: center; margin-right: auto; font-size: var(--font-xs); color: var(--text-muted); }.privacy-note i { width: 6px; height: 6px; background: var(--loss); border-radius: 99px; box-shadow: 0 0 0 3px var(--loss-soft); }
+footer { flex: none; gap: 8px; align-items: center; justify-content: flex-end; padding-top: 16px; margin-top: auto; border-top: 1px solid var(--hairline); }footer button { padding: 9px 14px; font-size: var(--font-sm); border-radius: 10px; }footer .primary { display: inline-flex; gap: 7px; align-items: center; justify-content: center; min-width: 100px; color: white; background: var(--accent); border-color: transparent; }.privacy-note { display: flex; gap: 7px; align-items: center; margin-right: auto; font-size: var(--font-xs); color: var(--text-muted); }.privacy-note i { width: 6px; height: 6px; background: var(--loss); border-radius: 99px; box-shadow: 0 0 0 3px var(--loss-soft); }
+.button-spinner { width: 13px; height: 13px; border: 1.5px solid rgba(255, 255, 255, .34); border-top-color: white; border-radius: 50%; animation: button-spin 680ms linear infinite; }
+@keyframes button-spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { .preview-head { display: none; }.preview-row { grid-template-columns: 28px 1fr 28px; }.preview-row > input, .strategy-field { grid-column: 2; }.dialog-backdrop { padding: 10px; }.editor { width: 100%; max-height: calc(100vh - 20px); }.mode-tabs button { padding-inline: 9px; }.mode-tabs svg { display: none; } }
 </style>

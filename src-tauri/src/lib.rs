@@ -88,6 +88,14 @@ async fn refresh_overview(
     Ok(snapshot)
 }
 
+fn refresh_market_in_background(app: AppHandle, overview: Arc<OverviewService>) {
+    tauri::async_runtime::spawn(async move {
+        if let Ok((snapshot, _)) = overview.overview().await {
+            let _ = emit_snapshot(&app, &snapshot);
+        }
+    });
+}
+
 #[tauri::command]
 async fn lookup_fund(
     state: State<'_, AppState>,
@@ -159,6 +167,7 @@ async fn upsert_position(
         .await
         .map_err(|error| error.to_string())?;
     emit_snapshot(&app, &snapshot)?;
+    refresh_market_in_background(app, state.overview.clone());
     Ok(snapshot)
 }
 
@@ -174,6 +183,7 @@ async fn import_positions(
         .await
         .map_err(|error| error.to_string())?;
     emit_snapshot(&app, &snapshot)?;
+    refresh_market_in_background(app, state.overview.clone());
     Ok(snapshot)
 }
 
@@ -189,6 +199,7 @@ async fn update_positions_partial(
         .await
         .map_err(|error| error.to_string())?;
     emit_snapshot(&app, &result.snapshot)?;
+    refresh_market_in_background(app, state.overview.clone());
     Ok(result)
 }
 
@@ -204,6 +215,7 @@ async fn delete_positions(
         .await
         .map_err(|error| error.to_string())?;
     emit_snapshot(&app, &snapshot)?;
+    refresh_market_in_background(app, state.overview.clone());
     Ok(snapshot)
 }
 

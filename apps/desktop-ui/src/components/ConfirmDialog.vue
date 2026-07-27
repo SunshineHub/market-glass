@@ -1,5 +1,7 @@
 <script setup lang="ts">
-withDefaults(
+import { useDelayedBusy } from "@/features/ui/useDelayedBusy";
+
+const props = withDefaults(
   defineProps<{
     title: string;
     description: string;
@@ -8,11 +10,16 @@ withDefaults(
   }>(),
   { confirmLabel: "确认删除", busy: false },
 );
-defineEmits<{ close: []; confirm: [] }>();
+const emit = defineEmits<{ close: []; confirm: [] }>();
+const busyVisible = useDelayedBusy(() => props.busy);
+
+function close() {
+  if (!props.busy) emit("close");
+}
 </script>
 
 <template>
-  <div class="confirm-backdrop no-drag" @mousedown.self="$emit('close')">
+  <div class="confirm-backdrop no-drag" @mousedown.self="close">
     <section class="confirm-dialog material-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
       <div class="danger-icon">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></svg>
@@ -20,9 +27,10 @@ defineEmits<{ close: []; confirm: [] }>();
       <h2 id="confirm-title">{{ title }}</h2>
       <p>{{ description }}</p>
       <footer>
-        <button type="button" class="secondary" :disabled="busy" @click="$emit('close')">取消</button>
+        <button type="button" class="secondary" :disabled="busy" @click="close">取消</button>
         <button type="button" class="danger" :disabled="busy" @click="$emit('confirm')">
-          {{ busy ? "处理中…" : confirmLabel }}
+          <i v-if="busyVisible" class="button-spinner" />
+          <span>{{ busyVisible ? "正在删除" : confirmLabel }}</span>
         </button>
       </footer>
     </section>
@@ -99,5 +107,7 @@ button {
 
 button:disabled { cursor: default; opacity: .55; }
 .secondary { color: var(--text); background: var(--glass-subtle); }
-.danger { color: white; background: var(--profit); border-color: transparent; }
+.danger { display: inline-flex; gap: 7px; align-items: center; justify-content: center; color: white; background: var(--profit); border-color: transparent; }
+.button-spinner { width: 13px; height: 13px; border: 1.5px solid rgba(255, 255, 255, .34); border-top-color: white; border-radius: 50%; animation: button-spin 680ms linear infinite; }
+@keyframes button-spin { to { transform: rotate(360deg); } }
 </style>
